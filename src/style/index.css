@@ -21,6 +21,7 @@
 @import "./components/input.css";
 @import "./components/context-tray.css";
 @import "./components/context-footer.css";
+@import "./components/selection-toolbar.css";
 
 /* Toolbar */
 @import "./toolbar/model-selector.css";

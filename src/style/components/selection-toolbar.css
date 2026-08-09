@@ -1,0 +1,41 @@
+/* Floating Selection Quick Action Toolbar */
+.claudian-chat-selection-toolbar {
+  position: absolute;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  background-color: var(--background-primary);
+  border: 1px solid var(--border-color, var(--background-modifier-border));
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  user-select: none;
+  animation: claudian-pop-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.claudian-selection-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-normal);
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.claudian-selection-action-btn:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-accent);
+}
+
+.claudian-selection-action-btn svg {
+  width: 14px;
+  height: 14px;
+}

@@ -18,6 +18,7 @@ import type { SubagentManager } from '../services/SubagentManager';
 import type { ChatState } from '../state/ChatState';
 import type { TabAttention } from '../state/types';
 import type { BangBashModeManager } from '../ui/BangBashModeManager';
+import type { ChatSelectionToolbar } from '../ui/ChatSelectionToolbar';
 import type { ComposerContextTray } from '../ui/ComposerContextTray';
 import type { FileContextManager } from '../ui/FileContext';
 import type { ImageContextManager } from '../ui/ImageContext';
@@ -131,6 +132,7 @@ export interface TabUIComponents {
   readonly contextUsageMeter: ContextUsageMeter;
   readonly statusPanel: StatusPanel;
   readonly navigationSidebar: NavigationSidebar;
+  readonly chatSelectionToolbar: ChatSelectionToolbar;
 }
 
 /**

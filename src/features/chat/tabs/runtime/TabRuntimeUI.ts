@@ -18,6 +18,7 @@ import { getEnhancedPath } from '../../../../utils/env';
 import { getVaultPath } from '../../../../utils/path';
 import { BangBashService } from '../../services/BangBashService';
 import { BangBashModeManager as BangBashModeManagerClass } from '../../ui/BangBashModeManager';
+import { ChatSelectionToolbar } from '../../ui/ChatSelectionToolbar';
 import { ComposerContextTray } from '../../ui/ComposerContextTray';
 import { FileContextManager } from '../../ui/FileContext';
 import { ImageContextManager } from '../../ui/ImageContext';
@@ -469,6 +470,24 @@ export function buildTabRuntimeUI(
   );
   options.registerCleanup('tab navigation sidebar', () => navigationSidebar.destroy());
 
+  const chatSelectionToolbar = new ChatSelectionToolbar(dom.messagesWrapperEl, {
+    onExplain: (text) => {
+      const current = dom.inputEl.value;
+      const prefix = current ? `${current}\n\n` : '';
+      dom.inputEl.value = `${prefix}Giải thích đoạn văn này:\n> ${text}\n`;
+      autoResizeTextarea(dom.inputEl);
+      dom.inputEl.focus();
+    },
+    onRefine: (text) => {
+      const current = dom.inputEl.value;
+      const prefix = current ? `${current}\n\n` : '';
+      dom.inputEl.value = `${prefix}Viết lại / cải thiện đoạn văn này:\n> ${text}\n`;
+      autoResizeTextarea(dom.inputEl);
+      dom.inputEl.focus();
+    },
+  });
+  options.registerCleanup('tab chat selection toolbar', () => chatSelectionToolbar.destroy());
+
   const ui: TabUIComponents = {
     contextTray,
     ...contextManagers,
@@ -483,6 +502,7 @@ export function buildTabRuntimeUI(
     ...instructionComponents,
     contextUsageMeter: toolbar.contextUsageMeter,
     navigationSidebar,
+    chatSelectionToolbar,
   };
 
   ui.mcpServerSelector.setMcpManager(getProviderMcpManager(getTabProviderId(shell, plugin)));
