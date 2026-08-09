@@ -56,6 +56,7 @@ export const DEFAULT_CLAUDIAN_SETTINGS: ClaudianSettings = {
   enableDualPane: true,
   enableFilePane: true,
   dualPaneSide: 'right',
+  sessionPaneVisibility: 'auto',
   sessionManagerOrganization: 'list',
   sessionManagerSort: 'last-updated',
   pinnedLinkedNotePaths: [],

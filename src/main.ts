@@ -296,6 +296,20 @@ export default class ClaudianPlugin extends Plugin {
       });
 
       this.addCommand({
+        id: 'toggle-session-pane',
+        name: 'Toggle session pane',
+        checkCallback: (checking: boolean) => {
+          const view = this.getView();
+          if (!view?.canToggleSessionPane()) return false;
+
+          if (!checking) {
+            view.toggleSessionPane();
+          }
+          return true;
+        },
+      });
+
+      this.addCommand({
         id: 'copy-startup-diagnostics',
         name: 'Copy startup diagnostics',
         callback: async () => {

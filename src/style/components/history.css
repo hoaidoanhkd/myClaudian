@@ -57,6 +57,47 @@
   display: none;
 }
 
+/*
+ * Below the wide-layout threshold there is no room to split the view, so an
+ * explicitly opened session pane floats over the chat instead of squeezing it.
+ */
+.claudian-session-overlay-layout {
+  --claudian-session-overlay-width: min(var(--claudian-session-sidebar-width, 240px), 85%);
+}
+
+.claudian-session-overlay-layout .claudian-session-sidebar {
+  position: absolute;
+  z-index: 10;
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: var(--claudian-session-overlay-width);
+  box-shadow: 0 0 12px var(--background-modifier-box-shadow);
+}
+
+.claudian-session-overlay-layout.claudian-session-sidebar-left .claudian-session-sidebar {
+  inset-inline-end: auto;
+  inset-inline-start: 0;
+}
+
+/*
+ * The overlay covers the toggle's usual corner, so the toggle rides the pane's
+ * inner edge — still on screen, and pointing at what it closes.
+ */
+.claudian-session-overlay-layout .claudian-session-pane-toggle-btn {
+  z-index: 11;
+  inset-inline-start: auto;
+  inset-inline-end: calc(var(--claudian-session-overlay-width) + 6px);
+}
+
+.claudian-session-overlay-layout.claudian-session-sidebar-left .claudian-session-pane-toggle-btn {
+  inset-inline-end: auto;
+  inset-inline-start: calc(var(--claudian-session-overlay-width) + 6px);
+}
+
+.claudian-session-overlay-layout .claudian-session-resizer {
+  display: none;
+}
+
 .claudian-sidebar-surface-switcher {
   position: absolute;
   inset-inline: 0;

@@ -1433,6 +1433,157 @@ describe('ClaudianView tab controls', () => {
     expect(view.renderSessionSidebar).not.toHaveBeenCalled();
   });
 
+  function createExpandedSessionPaneView(viewContainerEl: ReturnType<typeof createMockEl>) {
+    const view = Object.create(ClaudianView.prototype) as any;
+
+    Object.assign(view, {
+      cancelHistoryRendering: jest.fn(),
+      historyDropdown: createMockEl(),
+      isWideSessionLayout: false,
+      plugin: {
+        settings: {
+          dualPaneSide: 'right',
+          enableDualPane: true,
+          sessionPaneVisibility: 'expanded',
+        },
+      },
+      renderSessionSidebar: jest.fn(),
+      requestedWideSessionLayout: false,
+      viewContainerEl,
+    });
+
+    return view;
+  }
+
+  it('keeps the single-panel layout while the session pane is collapsed', () => {
+    const viewContainerEl = createMockEl();
+    const view = Object.create(ClaudianView.prototype) as any;
+
+    Object.assign(view, {
+      isWideSessionLayout: false,
+      plugin: {
+        settings: {
+          dualPaneSide: 'right',
+          enableDualPane: true,
+          sessionPaneVisibility: 'collapsed',
+        },
+      },
+      renderSessionSidebar: jest.fn(),
+      requestedWideSessionLayout: false,
+      viewContainerEl,
+    });
+
+    view.updateSessionSidebarLayout(900);
+
+    expect(viewContainerEl.hasClass('claudian-wide-session-layout')).toBe(false);
+    expect(view.isWideSessionLayout).toBe(false);
+    expect(view.renderSessionSidebar).not.toHaveBeenCalled();
+  });
+
+  it('overlays an explicitly expanded session pane while the view is narrow', () => {
+    const viewContainerEl = createMockEl();
+    const view = createExpandedSessionPaneView(viewContainerEl);
+
+    view.updateSessionSidebarLayout(400);
+
+    expect(viewContainerEl.hasClass('claudian-wide-session-layout')).toBe(true);
+    expect(viewContainerEl.hasClass('claudian-session-overlay-layout')).toBe(true);
+  });
+
+  it('splits the view instead of overlaying once there is room', () => {
+    const viewContainerEl = createMockEl();
+    const view = createExpandedSessionPaneView(viewContainerEl);
+
+    view.updateSessionSidebarLayout(900);
+
+    expect(viewContainerEl.hasClass('claudian-wide-session-layout')).toBe(true);
+    expect(viewContainerEl.hasClass('claudian-session-overlay-layout')).toBe(false);
+  });
+
+  it('hides the session pane toggle only where dual-pane mode is off', () => {
+    const sessionPaneToggleEl = createMockEl();
+    const settings: Record<string, unknown> = {
+      dualPaneSide: 'right',
+      enableDualPane: true,
+      sessionPaneVisibility: 'auto',
+    };
+    const view = Object.create(ClaudianView.prototype) as any;
+
+    Object.assign(view, {
+      plugin: { settings },
+      sessionPaneToggleEl,
+      viewContainerEl: createMockEl(),
+    });
+
+    // A narrow view keeps the toggle reachable, reporting the collapsed state.
+    view.updateSessionPaneToggleState(400);
+    expect(sessionPaneToggleEl.hasClass('claudian-hidden')).toBe(false);
+    expect(sessionPaneToggleEl.getAttribute('aria-pressed')).toBe('false');
+    expect(sessionPaneToggleEl.getAttribute('aria-label')).toBe('Show session pane');
+
+    view.updateSessionPaneToggleState(900);
+    expect(sessionPaneToggleEl.getAttribute('aria-pressed')).toBe('true');
+    expect(sessionPaneToggleEl.getAttribute('aria-label')).toBe('Hide session pane');
+
+    settings.enableDualPane = false;
+    view.updateSessionPaneToggleState(900);
+    expect(sessionPaneToggleEl.hasClass('claudian-hidden')).toBe(true);
+  });
+
+  it('steps the overlaying session pane aside when the chat is reached for', () => {
+    const view = Object.create(ClaudianView.prototype) as any;
+    const toggleSessionPane = jest.fn();
+
+    Object.assign(view, {
+      plugin: {
+        settings: {
+          dualPaneSide: 'right',
+          enableDualPane: true,
+          sessionPaneVisibility: 'expanded',
+        },
+      },
+      toggleSessionPane,
+      viewContainerEl: createMockEl(),
+    });
+
+    view.collapseSessionPaneOverlay();
+    expect(toggleSessionPane).toHaveBeenCalledTimes(1);
+
+    // A pane that is not overlaying the chat stays where it is.
+    view.plugin.settings.sessionPaneVisibility = 'auto';
+    view.collapseSessionPaneOverlay();
+    expect(toggleSessionPane).toHaveBeenCalledTimes(1);
+  });
+
+  it('persists the session pane choice and reapplies the layout', async () => {
+    const settings: Record<string, unknown> = {
+      dualPaneSide: 'right',
+      enableDualPane: true,
+      sessionPaneVisibility: 'expanded',
+    };
+    const mutateSettings = jest.fn(
+      async (mutator: (value: Record<string, unknown>) => void) => {
+        mutator(settings);
+      },
+    );
+    const view = Object.create(ClaudianView.prototype) as any;
+
+    Object.assign(view, {
+      plugin: { mutateSettings, settings },
+      refreshDualPaneLayout: jest.fn(),
+      sessionPaneToggleEl: createMockEl(),
+      viewContainerEl: createMockEl(),
+    });
+
+    view.toggleSessionPane();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(mutateSettings).toHaveBeenCalledTimes(1);
+    expect(settings.sessionPaneVisibility).toBe('collapsed');
+    expect(view.refreshDualPaneLayout).toHaveBeenCalledTimes(1);
+  });
+
   it('attaches the persistent session column to the configured left side', () => {
     const viewContainerEl = createMockEl();
     const view = Object.create(ClaudianView.prototype) as any;

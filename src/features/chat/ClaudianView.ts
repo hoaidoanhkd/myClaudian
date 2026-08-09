@@ -92,6 +92,7 @@ export class ClaudianView extends ItemView {
   private readonly sidebarSurfaceWheelGesture = new HorizontalWheelGesture();
   private vaultFileTree: VaultFileTree | null = null;
   private sessionSidebarResizerEl: HTMLElement | null = null;
+  private sessionPaneToggleEl: HTMLElement | null = null;
   private sessionSidebarRenderAbortController: AbortController | null = null;
   private sessionSidebarResizeObserver: ResizeObserver | null = null;
   private sessionSidebarResizeCleanup: (() => void) | null = null;
@@ -479,6 +480,21 @@ export class ClaudianView extends ItemView {
     if (!this.viewContainerEl) return;
 
     this.chatPanelEl = this.viewContainerEl.createDiv({ cls: 'claudian-chat-panel' });
+
+    // Owns its own element: the wide layout hides the nav row, and that is
+    // exactly where the session pane needs a way back.
+    this.sessionPaneToggleEl = this.chatPanelEl.createDiv({
+      cls: 'claudian-input-nav-btn claudian-session-pane-toggle-btn',
+    });
+    this.sessionPaneToggleEl.addEventListener('click', () => this.toggleSessionPane());
+    this.updateSessionPaneToggleState(this.viewContainerEl.getBoundingClientRect().width);
+
+    // Reaching for the chat is a request to see it, so an overlaying pane leaves.
+    this.chatPanelEl.addEventListener('click', (event) => {
+      if (this.sessionPaneToggleEl?.contains(event.target as Node)) return;
+      this.collapseSessionPaneOverlay();
+    });
+
     this.tabContentEl = this.chatPanelEl.createDiv({ cls: 'claudian-tab-content-container' });
     this.buildInputFooter();
 
@@ -582,6 +598,7 @@ export class ClaudianView extends ItemView {
 
   private requestDualNew(): void {
     void this.activateOrCreateDraftTab()
+      .then(() => this.collapseSessionPaneOverlay())
       .catch(() => new Notice('Failed to start a new conversation'));
   }
 
@@ -605,6 +622,7 @@ export class ClaudianView extends ItemView {
   async handleNewConversationCommand(): Promise<boolean> {
     if (!this.isWideSessionLayout) return false;
     await this.activateOrCreateDraftTab();
+    this.collapseSessionPaneOverlay();
     return true;
   }
 
@@ -646,6 +664,53 @@ export class ClaudianView extends ItemView {
     if (!this.viewContainerEl) return;
     this.updateSidebarSurfaceVisibility();
     this.updateSessionSidebarLayout(this.viewContainerEl.getBoundingClientRect().width);
+  }
+
+  /** The session pane can only be toggled where dual-pane mode is available. */
+  canToggleSessionPane(): boolean {
+    return this.plugin?.settings?.enableDualPane ?? true;
+  }
+
+  /**
+   * `auto` follows the width threshold; an explicit choice overrides it, so a
+   * narrow view can still be forced to show the pane.
+   */
+  private isSessionPaneExpanded(width: number): boolean {
+    if (!this.canToggleSessionPane()) return false;
+
+    switch (this.plugin?.settings?.sessionPaneVisibility ?? 'auto') {
+      case 'expanded':
+        return true;
+      case 'collapsed':
+        return false;
+      default:
+        return width >= WIDE_SESSION_LAYOUT_MIN_WIDTH;
+    }
+  }
+
+  toggleSessionPane(): void {
+    const width = this.viewContainerEl?.getBoundingClientRect().width ?? 0;
+    const visibility = this.isSessionPaneExpanded(width) ? 'collapsed' : 'expanded';
+    void this.plugin.mutateSettings((settings) => {
+      settings.sessionPaneVisibility = visibility;
+    }).then(() => this.refreshDualPaneLayout())
+      .catch(() => new Notice('Failed to toggle the session pane'));
+  }
+
+  private updateSessionPaneToggleState(width: number): void {
+    const toggleEl = this.sessionPaneToggleEl;
+    if (!toggleEl) return;
+
+    toggleEl.toggleClass('claudian-hidden', !this.canToggleSessionPane());
+
+    const expanded = this.isSessionPaneExpanded(width);
+    const isLeft = this.plugin?.settings?.dualPaneSide === 'left';
+    setIcon(toggleEl, isLeft ? 'panel-left' : 'panel-right');
+    toggleEl.setAttribute('aria-pressed', String(expanded));
+    toggleEl.setAttribute(
+      'aria-label',
+      expanded ? 'Hide session pane' : 'Show session pane',
+    );
   }
 
   private findMostRecentUnboundTab(): AssembledTabRuntime | null {
@@ -1854,8 +1919,13 @@ export class ClaudianView extends ItemView {
     const isLeft = this.plugin?.settings?.dualPaneSide === 'left';
     this.viewContainerEl.toggleClass('claudian-session-sidebar-left', isLeft);
 
-    const isDualPaneEnabled = this.plugin?.settings?.enableDualPane ?? true;
-    const shouldUseWideLayout = isDualPaneEnabled && width >= WIDE_SESSION_LAYOUT_MIN_WIDTH;
+    const shouldUseWideLayout = this.isSessionPaneExpanded(width);
+    // Too narrow to split: the pane floats over the chat rather than squeezing it.
+    this.viewContainerEl.toggleClass(
+      'claudian-session-overlay-layout',
+      shouldUseWideLayout && width < WIDE_SESSION_LAYOUT_MIN_WIDTH,
+    );
+    this.updateSessionPaneToggleState(width);
     if (!shouldUseWideLayout) {
       this.sidebarSurfaceWheelGesture?.reset();
       this.vaultFileTree?.setActive(false);
@@ -1971,6 +2041,7 @@ export class ClaudianView extends ItemView {
     if (localTab || (crossViewResult && crossViewResult.view !== this)) {
       await this.tabManager.openConversation(conversationId);
       this.retainPinnedConversationTab(conversationId);
+      if (activate) this.collapseSessionPaneOverlay();
       return;
     }
 
@@ -1980,6 +2051,16 @@ export class ClaudianView extends ItemView {
       provisional: true,
     });
     this.retainPinnedConversationTab(conversationId);
+    if (activate) this.collapseSessionPaneOverlay();
+  }
+
+  /** An overlaying pane hides the chat behind it, so it steps aside. */
+  private collapseSessionPaneOverlay(): void {
+    const width = this.viewContainerEl?.getBoundingClientRect().width ?? 0;
+    if (width >= WIDE_SESSION_LAYOUT_MIN_WIDTH) return;
+    if (!this.isSessionPaneExpanded(width)) return;
+
+    this.toggleSessionPane();
   }
 
   private retainPinnedConversationTab(conversationId: string): void {

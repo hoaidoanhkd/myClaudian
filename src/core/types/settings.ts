@@ -67,6 +67,14 @@ export const DUAL_PANE_SIDES = ['left', 'right'] as const;
 /** Side of the chat occupied by the session manager in dual-pane mode. */
 export type DualPaneSide = typeof DUAL_PANE_SIDES[number];
 
+export const SESSION_PANE_VISIBILITIES = ['auto', 'expanded', 'collapsed'] as const;
+
+/**
+ * Session pane visibility. `auto` follows the wide-layout width threshold;
+ * `expanded` and `collapsed` are explicit user choices that override it.
+ */
+export type SessionPaneVisibility = typeof SESSION_PANE_VISIBILITIES[number];
+
 export type SessionManagerOrganization = 'list' | 'linked-note';
 export type SessionManagerSort = 'last-updated' | 'created';
 
@@ -181,6 +189,7 @@ export interface ClaudianSettings {
   enableDualPane: boolean;
   enableFilePane: boolean;
   dualPaneSide: DualPaneSide;
+  sessionPaneVisibility?: SessionPaneVisibility;
   sessionManagerOrganization?: SessionManagerOrganization;
   sessionManagerSort?: SessionManagerSort;
   pinnedLinkedNotePaths?: string[];
