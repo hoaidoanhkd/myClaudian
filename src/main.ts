@@ -175,25 +175,27 @@ export default class ClaudianPlugin extends Plugin {
         setItems: () => undefined,
         clearItems: () => undefined,
       };
-      const selectionAnchorEl = document.body.createEl('input', {
-        attr: { type: 'hidden' },
-      });
-      const noteSelectionController = new SelectionController(
-        this.app,
-        globalSelectionContextTray,
-        selectionAnchorEl,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        this,
-        true,
-      );
-      noteSelectionController.start();
-      this.register(() => {
-        noteSelectionController.stop();
-        selectionAnchorEl.remove();
-      });
+      if (typeof activeDocument !== 'undefined') {
+        const selectionAnchorEl = activeDocument.body.createEl('input', {
+          attr: { type: 'hidden' },
+        });
+        const noteSelectionController = new SelectionController(
+          this.app,
+          globalSelectionContextTray,
+          selectionAnchorEl,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          this,
+          true,
+        );
+        noteSelectionController.start();
+        this.register(() => {
+          noteSelectionController.stop();
+          selectionAnchorEl.remove();
+        });
+      }
       this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
         void this.handleLinkedNoteRename(file, oldPath).catch(() => {
           new Notice('Failed to update linked session note paths');
