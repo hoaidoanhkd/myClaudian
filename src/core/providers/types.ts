@@ -713,3 +713,11 @@ export interface InlineEditService {
   continueConversation(message: string, contextFiles?: string[]): Promise<InlineEditResult>;
   cancel(): void;
 }
+
+export interface SelectionExplanationService {
+  explainSelection(
+    selectedText: string,
+    onProgress?: (accumulatedText: string) => void,
+  ): Promise<{ success: boolean; explanation?: string; error?: string }>;
+  cancel(): void;
+}

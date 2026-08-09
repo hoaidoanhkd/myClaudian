@@ -20,7 +20,7 @@ function createDeferred<T>() {
   return { promise, reject, resolve };
 }
 
-function createSession() {
+function createSession(initialInstruction?: string) {
   const sourceDoc = Text.of(['hello']);
   const editorView: any = {
     dispatch: jest.fn(),
@@ -63,6 +63,7 @@ function createSession() {
     () => [],
     resolve,
     { providerId: 'claude' },
+    initialInstruction,
   );
   Object.assign(session as any, {
     editedText: 'world',
@@ -185,5 +186,44 @@ describe('InlineEditSession', () => {
 
     expect((session as any).isConversing).toBe(false);
     expect(inputEl.placeholder).toContain('provider environment changed');
+  });
+
+  it('fills and submits an initial instruction from a quick action', async () => {
+    const { service, session } = createSession('Explain this passage');
+    const inputEl = Object.assign(createMockEl('input'), { value: '' });
+    Object.assign(session as any, {
+      inputEl,
+      spinnerEl: createMockEl(),
+    });
+    service.editText.mockResolvedValue({ success: true, editedText: 'Explanation' });
+
+    (session as any).applyInitialInstruction();
+    await Promise.resolve();
+
+    expect(inputEl.value).toBe('Explain this passage');
+    expect(service.editText).toHaveBeenCalled();
+  });
+
+  it('reviews a plain-text provider response for an automatic rewrite', async () => {
+    const instruction = 'Improve writing';
+    const { service, session } = createSession(instruction);
+    const showDiff = jest.fn();
+    Object.assign(session as any, {
+      inputEl: Object.assign(createMockEl('input'), { value: instruction }),
+      showDiffInPlace: showDiff,
+      spinnerEl: createMockEl(),
+    });
+    service.editText.mockResolvedValue({
+      clarification: 'A clearer version of the selected text.',
+      success: true,
+    });
+
+    await (session as any).generate();
+
+    expect((session as any).editedText).toBe('A clearer version of the selected text.');
+    expect(showDiff).toHaveBeenCalledTimes(1);
+    expect(Notice).not.toHaveBeenCalledWith(
+      'Inline edit needs a more specific instruction. Please try again.',
+    );
   });
 });

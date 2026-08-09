@@ -9,6 +9,7 @@ import {
   getProviderForModel,
 } from '../../../../core/providers/modelRouting';
 import { ProviderRegistry } from '../../../../core/providers/ProviderRegistry';
+import { ProviderWorkspaceRegistry } from '../../../../core/providers/ProviderWorkspaceRegistry';
 import type {
   ProviderChatUIConfig,
   ProviderId,
@@ -471,12 +472,18 @@ export function buildTabRuntimeUI(
   options.registerCleanup('tab navigation sidebar', () => navigationSidebar.destroy());
 
   const chatSelectionToolbar = new ChatSelectionToolbar(dom.messagesWrapperEl, {
-    onExplain: (text) => {
-      const current = dom.inputEl.value;
-      const prefix = current ? `${current}\n\n` : '';
-      dom.inputEl.value = `${prefix}Giải thích đoạn văn này:\n> ${text}\n`;
-      autoResizeTextarea(dom.inputEl);
-      dom.inputEl.focus();
+    onExplain: async (text) => {
+      const providerId = getTabProviderId(shell, plugin);
+      try {
+        await ProviderWorkspaceRegistry.ensureInitialized(plugin.providerHost, providerId, 'inline-edit');
+        const service = ProviderRegistry.createSelectionExplanationService(plugin.providerHost, providerId);
+        const result = await service.explainSelection(text);
+        return result.success && result.explanation
+          ? result.explanation
+          : result.error ?? 'Unable to explain the selection.';
+      } catch (error) {
+        return error instanceof Error ? error.message : 'Unable to explain the selection.';
+      }
     },
     onRefine: (text) => {
       const current = dom.inputEl.value;

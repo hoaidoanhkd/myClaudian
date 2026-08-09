@@ -39,3 +39,193 @@
   width: 14px;
   height: 14px;
 }
+
+/* Inline Context Chip Actions */
+.claudian-context-chip-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 4px;
+  padding-left: 4px;
+  border-left: 1px solid var(--background-modifier-border);
+}
+
+.claudian-context-chip-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background-color: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.claudian-context-chip-action-btn:hover {
+  color: var(--text-accent);
+  background-color: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+}
+
+.claudian-context-chip-action-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.claudian-context-chip-action-icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Floating Popover on Editor Note Selection (Google Docs style) */
+.claudian-editor-note-popover {
+  position: fixed;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  background-color: var(--background-primary);
+  border: 1px solid var(--border-color, var(--background-modifier-border));
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  user-select: none;
+  animation: claudian-pop-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.claudian-selection-action-card {
+  position: fixed;
+  z-index: 10000;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: min(520px, calc(100vw - 20px));
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  animation: claudian-pop-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.claudian-selection-action-card--processing {
+  position: relative;
+  overflow: hidden;
+  width: min(700px, calc(100vw - 24px));
+  min-width: 0;
+  justify-content: space-between;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--interactive-accent) 7%, var(--background-primary));
+  border-color: color-mix(in srgb, var(--interactive-accent) 58%, var(--background-modifier-border));
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--interactive-accent) 13%, transparent);
+  color: var(--text-muted);
+}
+
+.claudian-selection-action-card__processing-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.claudian-selection-action-card__processing-icon {
+  font-size: 14px;
+  animation: claudian-pulse 1.2s ease-in-out infinite alternate;
+}
+
+.claudian-selection-action-card--processing .claudian-selection-action-card__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 10px;
+}
+
+.claudian-selection-action-card__content {
+  width: 100%;
+  flex: 1;
+  max-height: 240px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small, 13px);
+  line-height: 1.5;
+}
+
+.claudian-selection-action-card__footer {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.claudian-selection-action-card__action {
+  padding: 4px 8px;
+  color: var(--text-normal);
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.claudian-selection-action-card__action:hover {
+  color: var(--text-accent);
+  background: var(--background-modifier-hover);
+}
+
+.claudian-note-popover-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-normal);
+  background-color: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.claudian-note-popover-btn:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-accent);
+  border-color: var(--interactive-accent);
+}
+
+.claudian-note-popover-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.claudian-note-popover-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 14px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.claudian-note-popover-close:hover {
+  color: var(--text-normal);
+  background-color: var(--background-modifier-hover);
+}

@@ -2045,10 +2045,15 @@ export class ClaudianView extends ItemView {
       return;
     }
 
+    const activeTab = typeof this.tabManager.getActiveTab === 'function'
+      ? this.tabManager.getActiveTab()
+      : null;
+    const isCurrentTabEmptyDraft = activeTab && !activeTab.conversationId && activeTab.state.messages.length === 0;
+
     await this.tabManager.openConversation(conversationId, {
-      preferNewTab: true,
+      preferNewTab: !isCurrentTabEmptyDraft,
       activate,
-      provisional: true,
+      provisional: false,
     });
     this.retainPinnedConversationTab(conversationId);
     if (activate) this.collapseSessionPaneOverlay();

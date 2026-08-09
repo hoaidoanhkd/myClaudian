@@ -15,6 +15,14 @@ export type ComposerContextSlot =
 
 export type ComposerContextItemKind = 'note' | 'selection' | 'image';
 
+export interface ComposerContextItemAction {
+  id: string;
+  label: string;
+  icon?: string;
+  ariaLabel?: string;
+  onActivate: () => void;
+}
+
 export interface ComposerContextItem {
   id: string;
   kind: ComposerContextItemKind;
@@ -22,6 +30,7 @@ export interface ComposerContextItem {
   icon?: string;
   title?: string;
   ariaLabel?: string;
+  actions?: ComposerContextItemAction[];
   onActivate?: () => void;
   onRemove?: () => void;
 }
@@ -212,6 +221,29 @@ export class ComposerContextTray {
     }
 
     contentEl.createSpan({ cls: 'claudian-context-chip-label', text: item.label });
+
+    if (item.actions && item.actions.length > 0) {
+      const actionsGroupEl = chipEl.createDiv({ cls: 'claudian-context-chip-actions' });
+      for (const action of item.actions) {
+        const actionBtn = actionsGroupEl.createEl('button', {
+          cls: 'claudian-context-chip-action-btn',
+          attr: {
+            type: 'button',
+            'aria-label': action.ariaLabel ?? action.label,
+          },
+        });
+        if (action.icon) {
+          const actionIconEl = actionBtn.createSpan({ cls: 'claudian-context-chip-action-icon' });
+          setIcon(actionIconEl, action.icon);
+        }
+        actionBtn.createSpan({ cls: 'claudian-context-chip-action-label', text: action.label });
+        actionBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          action.onActivate();
+        });
+      }
+    }
 
     if (item.onRemove) {
       const removeButton = chipEl.createEl('button', {

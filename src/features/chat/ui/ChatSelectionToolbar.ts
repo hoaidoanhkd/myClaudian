@@ -1,13 +1,18 @@
 import { setIcon } from 'obsidian';
 
+import { SelectionActionCard } from '../../../shared/components/SelectionActionCard';
+
 export interface ChatSelectionToolbarOptions {
-  onExplain: (selectedText: string) => void;
+  onExplain: (selectedText: string) => Promise<string>;
   onRefine: (selectedText: string) => void;
 }
 
 export class ChatSelectionToolbar {
   private toolbarEl: HTMLElement | null = null;
   private currentSelectionText = '';
+  private currentSelectionRect: DOMRect | null = null;
+  private readonly explanationCard: SelectionActionCard;
+  private explanationGeneration = 0;
   private isDestroyed = false;
 
   private readonly handleSelectionChange = () => {
@@ -25,6 +30,7 @@ export class ChatSelectionToolbar {
     private readonly containerEl: HTMLElement,
     private readonly options: ChatSelectionToolbarOptions,
   ) {
+    this.explanationCard = new SelectionActionCard(this.containerEl.ownerDocument);
     const ownerDoc = this.containerEl.ownerDocument || document;
     ownerDoc.addEventListener('selectionchange', this.handleSelectionChange);
     ownerDoc.addEventListener('mousedown', this.handleMouseDown);
@@ -35,6 +41,8 @@ export class ChatSelectionToolbar {
     const ownerDoc = this.containerEl.ownerDocument || document;
     ownerDoc.removeEventListener('selectionchange', this.handleSelectionChange);
     ownerDoc.removeEventListener('mousedown', this.handleMouseDown);
+    this.explanationGeneration += 1;
+    this.explanationCard.destroy();
     this.removeToolbar();
   }
 
@@ -70,6 +78,7 @@ export class ChatSelectionToolbar {
 
     this.currentSelectionText = text;
     const rect = range.getBoundingClientRect();
+    this.currentSelectionRect = rect;
     const containerRect = this.containerEl.getBoundingClientRect();
 
     if (!this.toolbarEl) {
@@ -102,8 +111,29 @@ export class ChatSelectionToolbar {
       e.stopPropagation();
       e.preventDefault();
       if (this.currentSelectionText) {
-        this.options.onExplain(this.currentSelectionText);
+        const text = this.currentSelectionText;
+        const rect = this.currentSelectionRect;
         this.hide();
+        if (!rect) return;
+        const generation = ++this.explanationGeneration;
+        this.explanationCard.showProcessing({
+          anchor: rect,
+          message: 'Focusing...',
+          onCancel: () => {
+            this.explanationGeneration += 1;
+            this.explanationCard.hide();
+          },
+        });
+        void this.options.onExplain(text).then((explanation) => {
+          if (this.isDestroyed || generation !== this.explanationGeneration) return;
+          this.explanationCard.showAnswer({
+            anchor: rect,
+            answer: explanation,
+            copyLabel: 'Sao chép',
+            dismissLabel: 'Đóng',
+            onCopy: () => void navigator.clipboard?.writeText(explanation),
+          });
+        });
       }
     });
 

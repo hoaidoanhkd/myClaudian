@@ -2320,7 +2320,7 @@ describe('ClaudianView tab controls', () => {
     expect(openConversation).toHaveBeenCalledWith('conversation-2', {
       preferNewTab: true,
       activate: true,
-      provisional: true,
+      provisional: false,
     });
   });
 
@@ -2375,7 +2375,7 @@ describe('ClaudianView tab controls', () => {
     expect(openConversation).toHaveBeenCalledWith('conversation-2', {
       preferNewTab: true,
       activate: true,
-      provisional: true,
+      provisional: false,
     });
   });
 

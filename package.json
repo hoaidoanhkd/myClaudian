@@ -57,6 +57,7 @@
     "@codemirror/view": "^6.38.6",
     "@modelcontextprotocol/client": "^2.0.0",
     "@pierre/trees": "1.0.0-beta.6",
+    "diff": "^9.0.0",
     "smol-toml": "^1.6.1"
   },
   "overrides": {

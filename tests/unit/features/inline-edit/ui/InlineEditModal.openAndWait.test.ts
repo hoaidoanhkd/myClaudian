@@ -785,9 +785,14 @@ describe('InlineEditModal - openAndWait', () => {
       expect(editTextMock.mock.calls[0][0].contextFiles).toEqual(['/external/src/app.md']);
 
       const noticeMock = Notice as unknown as jest.Mock;
-      expect(noticeMock).toHaveBeenCalledTimes(1);
-      expect(noticeMock).toHaveBeenCalledWith(
+      expect(noticeMock).toHaveBeenCalledTimes(2);
+      expect(noticeMock).toHaveBeenNthCalledWith(
+        1,
         'Failed to load vault files. Vault @-mentions may be unavailable.'
+      );
+      expect(noticeMock).toHaveBeenNthCalledWith(
+        2,
+        'Inline edit needs a more specific instruction. Please try again.',
       );
 
       widgetRef.reject();
@@ -1595,8 +1600,9 @@ describe('InlineEditModal - openAndWait', () => {
 
       expect(actionBar).not.toBeNull();
       expect(actionButtons).toHaveLength(2);
-      expect(actionButtons[0].textContent).toBe('Reject');
-      expect(actionButtons[1].textContent).toBe('Accept');
+      expect(actionButtons[0].textContent).toBe('Undo');
+      expect(actionButtons[1].textContent).toBe('OK');
+      expect(previewEl.querySelector('.claudian-inline-result-bar')).toBeNull();
 
       actionButtons[0].click();
       actionButtons[1].click();
@@ -1614,7 +1620,7 @@ describe('InlineEditModal - openAndWait', () => {
     }
   });
 
-  it('renders markdown diff documents with block context', async () => {
+  it('renders a compact inline diff without duplicate markdown documents', async () => {
     const originalDocument = (global as any).document;
     (global as any).document = {
       body: createMockEl('body'),
@@ -1719,38 +1725,20 @@ describe('InlineEditModal - openAndWait', () => {
       await widgetRef.generate();
 
       expect(diffOps).toEqual([
-        { type: 'equal', text: '```ts\n' },
-        { type: 'delete', text: 'const value = 1;\n' },
-        { type: 'insert', text: 'const value = 2;\n' },
-        { type: 'equal', text: '```' },
+        { type: 'equal', text: '```ts\nconst value = ' },
+        { type: 'delete', text: '1' },
+        { type: 'insert', text: '2' },
+        { type: 'equal', text: ';\n```' },
       ]);
       expect(hasPreviewText).toBe(false);
 
       (MarkdownRenderer.renderMarkdown as jest.Mock).mockClear();
       const previewEl = widgetRef.createDiffPreviewDOM(diffOps);
-      for (let i = 0; i < 5 && (MarkdownRenderer.renderMarkdown as jest.Mock).mock.calls.length < 2; i++) {
-        await Promise.resolve();
-      }
-
-      expect(MarkdownRenderer.renderMarkdown).toHaveBeenNthCalledWith(
-        1,
-        oldMarkdown,
-        expect.anything(),
-        'math/note.md',
-        plugin
-      );
-      expect(MarkdownRenderer.renderMarkdown).toHaveBeenNthCalledWith(
-        2,
-        newMarkdown,
-        expect.anything(),
-        'math/note.md',
-        plugin
-      );
-
-      const diffBlocks = previewEl.querySelectorAll('.claudian-diff-block');
-      expect(diffBlocks).toHaveLength(2);
-      expect(diffBlocks[0].hasClass('claudian-diff-del')).toBe(true);
-      expect(diffBlocks[1].hasClass('claudian-diff-ins')).toBe(true);
+      expect(MarkdownRenderer.renderMarkdown).not.toHaveBeenCalled();
+      const diffOperationEls = previewEl.querySelectorAll('.claudian-inline-diff-op');
+      expect(diffOperationEls).toHaveLength(4);
+      expect(diffOperationEls[1].hasClass('claudian-inline-diff-op--delete')).toBe(true);
+      expect(diffOperationEls[2].hasClass('claudian-inline-diff-op--insert')).toBe(true);
 
       widgetRef.reject();
       await expect(resultPromise).resolves.toEqual({ decision: 'reject' });

@@ -143,9 +143,9 @@ describe('SelectionController', () => {
       lineCount: 1,
       startLine: 1,
     });
-    expect(contextTray.setItems).toHaveBeenLastCalledWith('editor-selection', [
+    expect(contextTray.setItems).toHaveBeenLastCalledWith('editor-selection', expect.arrayContaining([
       expect.objectContaining({ label: '1 line selected' }),
-    ]);
+    ]));
     expect(contextTray.setItems.mock.calls[0][1][0]).not.toHaveProperty('title');
 
     controller.showHighlight();
@@ -163,6 +163,19 @@ describe('SelectionController', () => {
     expect(controller.hasSelection()).toBe(false);
     expect(contextTray.clearItems).toHaveBeenCalledWith('editor-selection');
     expect(hideSelectionHighlight).toHaveBeenCalledWith(editorView);
+  });
+
+  it('preserves the frozen selection while an explanation is running', () => {
+    controller.start();
+    jest.advanceTimersByTime(250);
+
+    (controller as any).isExplaining = true;
+    editor.getSelection.mockReturnValue('');
+    (global as any).document.activeElement = null;
+    jest.advanceTimersByTime(250);
+
+    expect(controller.hasSelection()).toBe(true);
+    expect(contextTray.clearItems).not.toHaveBeenCalledWith('editor-selection');
   });
 
   it('clears a sticky selection from the tray remove action', () => {
@@ -343,6 +356,26 @@ describe('SelectionController', () => {
     expect(hideSelectionHighlight).toHaveBeenCalledWith(editorView);
   });
 
+  it('uses the stored preview range to position the note-selection popover', () => {
+    const selectionRect = {
+      top: 40,
+      left: 20,
+      right: 180,
+      bottom: 62,
+      width: 160,
+      height: 22,
+    };
+    (controller as any).storedSelection = {
+      notePath: 'notes/reading.md',
+      selectedText: 'reading selection',
+      lineCount: 1,
+      domRanges: [{ getBoundingClientRect: () => selectionRect }],
+    };
+    (global as any).document.getSelection = jest.fn().mockReturnValue(null);
+
+    expect((controller as any).getSelectionDOMRect()).toEqual(selectionRect);
+  });
+
   describe('Reading mode (preview)', () => {
     let readingView: any;
     let containerEl: any;
@@ -378,9 +411,9 @@ describe('SelectionController', () => {
         selectedText: 'reading selection',
         lineCount: 1,
       });
-      expect(contextTray.setItems).toHaveBeenLastCalledWith('editor-selection', [
+      expect(contextTray.setItems).toHaveBeenLastCalledWith('editor-selection', expect.arrayContaining([
         expect.objectContaining({ label: '1 line selected' }),
-      ]);
+      ]));
     });
 
     it('preserves raw reading mode text and omits line metadata', () => {
@@ -401,9 +434,9 @@ describe('SelectionController', () => {
         selectedText: '  reading selection\nsecond line  ',
         lineCount: 2,
       });
-      expect(contextTray.setItems).toHaveBeenLastCalledWith('editor-selection', [
+      expect(contextTray.setItems).toHaveBeenLastCalledWith('editor-selection', expect.arrayContaining([
         expect.objectContaining({ label: '2 lines selected' }),
-      ]);
+      ]));
     });
 
     it('prefers native DOM selection in reading mode, falls back to CSS Highlight API when lost', () => {

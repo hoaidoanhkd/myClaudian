@@ -7,7 +7,7 @@ import './providers';
 
 StartupProfiler.finishModuleEvaluation();
 
-import type { Editor, TAbstractFile, WorkspaceLeaf } from 'obsidian';
+import type { TAbstractFile, WorkspaceLeaf } from 'obsidian';
 import { MarkdownView, Notice, Plugin, TFolder } from 'obsidian';
 
 import { ConversationRepository } from './app/conversations/ConversationRepository';
@@ -58,6 +58,7 @@ import {
 } from './core/types';
 import type { ChatViewPlacement, EnvironmentScope } from './core/types/settings';
 import { ClaudianView } from './features/chat/ClaudianView';
+import { SelectionController } from './features/chat/controllers/SelectionController';
 import type { ChatExecutionPersistence } from './features/chat/execution/ChatExecutionCoordinator';
 import {
   DEFAULT_MAX_WARM_AGENT_PROCESSES,
@@ -65,6 +66,7 @@ import {
   WarmExecutionPool,
 } from './features/chat/execution/WarmExecutionPool';
 import { registerFileMenu } from './features/chat/fileMenu';
+import type { ComposerContextTray } from './features/chat/ui/ComposerContextTray';
 import { type InlineEditContext, InlineEditModal } from './features/inline-edit/ui/InlineEditModal';
 import { ClaudianSettingTab } from './features/settings/ClaudianSettings';
 import { setLocale } from './i18n/i18n';
@@ -169,6 +171,29 @@ export default class ClaudianPlugin extends Plugin {
         (leaf) => new ClaudianView(leaf, this)
       );
       registerFileMenu(this);
+      const globalSelectionContextTray: Pick<ComposerContextTray, 'setItems' | 'clearItems'> = {
+        setItems: () => undefined,
+        clearItems: () => undefined,
+      };
+      const selectionAnchorEl = document.body.createEl('input', {
+        attr: { type: 'hidden' },
+      });
+      const noteSelectionController = new SelectionController(
+        this.app,
+        globalSelectionContextTray,
+        selectionAnchorEl,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        this,
+        true,
+      );
+      noteSelectionController.start();
+      this.register(() => {
+        noteSelectionController.stop();
+        selectionAnchorEl.remove();
+      });
       this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
         void this.handleLinkedNoteRename(file, oldPath).catch(() => {
           new Notice('Failed to update linked session note paths');
@@ -195,15 +220,14 @@ export default class ClaudianPlugin extends Plugin {
       this.addCommand({
         id: 'inline-edit',
         name: 'Inline edit',
-        editorCallback: async (editor: Editor, ctx) => {
-          const view = ctx instanceof MarkdownView
-            ? ctx
-            : this.app.workspace.getActiveViewOfType(MarkdownView);
-          if (!view) {
-            new Notice('Inline edit unavailable: could not access the active Markdown view.');
+        callback: async () => {
+          const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+          if (!view || !view.editor) {
+            new Notice('Inline edit unavailable: please open a Markdown note first.');
             return;
           }
 
+          const editor = view.editor;
           const selectedText = editor.getSelection();
           const notePath = view.file?.path || 'unknown';
 
@@ -237,6 +261,47 @@ export default class ClaudianPlugin extends Plugin {
           }
         },
       });
+
+      this.registerEvent(
+        this.app.workspace.on('editor-menu', (menu, editor, view) => {
+          if (!(view instanceof MarkdownView)) return;
+          menu.addItem((item) => {
+            item
+              .setTitle('Claudian: Inline edit')
+              .setIcon('bot')
+              .onClick(async () => {
+                const selectedText = editor.getSelection();
+                const notePath = view.file?.path || 'unknown';
+                let editContext: InlineEditContext;
+                if (selectedText.trim()) {
+                  editContext = { mode: 'selection', selectedText };
+                } else {
+                  const cursor = editor.getCursor();
+                  const cursorContext = buildCursorContext(
+                    (line) => editor.getLine(line),
+                    editor.lineCount(),
+                    cursor.line,
+                    cursor.ch
+                  );
+                  editContext = { mode: 'cursor', cursorContext };
+                }
+                const modal = new InlineEditModal(
+                  this.app,
+                  this,
+                  editor,
+                  view,
+                  editContext,
+                  notePath,
+                  () => this.getView()?.getActiveTab()?.ui.externalContextSelector?.getExternalContexts() ?? []
+                );
+                const result = await modal.openAndWait();
+                if (result.decision === 'accept' && result.editedText !== undefined) {
+                  new Notice(editContext.mode === 'cursor' ? 'Inserted' : 'Edit applied');
+                }
+              });
+          });
+        })
+      );
 
       this.addCommand({
         id: 'new-tab',

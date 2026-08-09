@@ -122,6 +122,10 @@ export function buildTabRuntimeControllers(
     undefined,
     [dom.contentEl, dom.inputComposerEl, ...getSharedSelectionFocusScopeEls(component)],
     () => commitProvisionalTab(runtimeRef.requirePublished()),
+    (prompt) => {
+      void runtimeRef.requirePublished().controllers.inputController.sendMessage({ content: prompt });
+    },
+    plugin,
   );
   options.registerCleanup('tab editor selection controller', () => selectionController.stop());
 

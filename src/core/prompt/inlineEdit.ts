@@ -159,6 +159,13 @@ CORRECT: "This is a guide about..."
 
 If the request is ambiguous, ask a clarifying question. Keep questions concise and specific.
 
+### Automatic Improve Writing Requests
+
+When the instruction is to improve writing, proofread, or rewrite, never ask for
+clarification. Make the most conservative useful edit and always return it in
+replacement tags. If no wording needs to change, return the original selected
+text inside replacement tags.
+
 ## Examples
 
 ### Selection Mode

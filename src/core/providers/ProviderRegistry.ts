@@ -1,6 +1,7 @@
 import { getVaultPath } from '../../utils/path';
 import { InlineEditService as SharedInlineEditService } from '../auxiliary/InlineEditService';
 import { InstructionRefineService as SharedInstructionRefineService } from '../auxiliary/InstructionRefineService';
+import { SelectionExplanationService as SharedSelectionExplanationService } from '../auxiliary/SelectionExplanationService';
 import { TitleGenerationService as SharedTitleGenerationService } from '../auxiliary/TitleGenerationService';
 import type {
   ProviderExecutionBackend,
@@ -25,6 +26,7 @@ import {
   type ProviderSubagentHistoryService,
   type ProviderTaskResultInterpreter,
   type ProviderUIOption,
+  type SelectionExplanationService,
   type TitleGenerationCallback,
   type TitleGenerationService,
 } from './types';
@@ -108,6 +110,15 @@ export class ProviderRegistry {
 
   static createInlineEditService(plugin: ProviderHost, providerId: ProviderId = DEFAULT_CHAT_PROVIDER_ID): InlineEditService {
     return new SharedInlineEditService(
+      this.createAuxiliaryExecutionContext(plugin, providerId),
+    );
+  }
+
+  static createSelectionExplanationService(
+    plugin: ProviderHost,
+    providerId: ProviderId = DEFAULT_CHAT_PROVIDER_ID,
+  ): SelectionExplanationService {
+    return new SharedSelectionExplanationService(
       this.createAuxiliaryExecutionContext(plugin, providerId),
     );
   }
