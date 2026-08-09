@@ -48,6 +48,12 @@ export class SelectionController {
   private explanationGeneration = 0;
   private explanationService: SelectionExplanationService | null = null;
   private readonly selectionChangeHandler = () => this.poll();
+  private readonly explanationEscapeHandler = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || (!this.isExplaining && !this.isShowingExplanation)) return;
+    event.preventDefault();
+    this.clear();
+    this.onUserSelectionChanged?.();
+  };
   private readonly focusScopePointerDownHandler = () => {
     if (!this.storedSelection) return;
     this.inputHandoffGraceUntil = Date.now() + INPUT_HANDOFF_GRACE_MS;
@@ -81,6 +87,7 @@ export class SelectionController {
   start(): void {
     if (this.pollInterval) return;
     this.inputEl.ownerDocument.addEventListener('selectionchange', this.selectionChangeHandler);
+    this.inputEl.ownerDocument.addEventListener('keydown', this.explanationEscapeHandler);
     this.inputEl.addEventListener('pointerdown', this.focusScopePointerDownHandler);
     for (const focusScopeEl of this.focusScopeEls) {
       if (focusScopeEl !== this.inputEl) {
@@ -97,6 +104,7 @@ export class SelectionController {
       this.pollInterval = null;
     }
     this.inputEl.ownerDocument.removeEventListener('selectionchange', this.selectionChangeHandler);
+    this.inputEl.ownerDocument.removeEventListener('keydown', this.explanationEscapeHandler);
     this.inputEl.removeEventListener('pointerdown', this.focusScopePointerDownHandler);
     for (const focusScopeEl of this.focusScopeEls) {
       if (focusScopeEl !== this.inputEl) {
@@ -588,18 +596,19 @@ Additional guidelines:
       this.isExplaining = false;
       this.isShowingExplanation = true;
       this.explanationService = null;
-      this.showExplanationResult(
-        result.success && result.explanation
-          ? result.explanation
-          : result.error ?? 'Unable to explain the selection.',
-      );
+      if (result.success && result.explanation) {
+        this.showExplanationResult(result.explanation);
+      } else {
+        this.showExplanationError(result.error ?? 'Unable to explain the selection.', selectedText);
+      }
     } catch (error) {
       if (generation !== this.explanationGeneration) return;
       this.isExplaining = false;
       this.isShowingExplanation = true;
       this.explanationService = null;
-      this.showExplanationResult(
+      this.showExplanationError(
         error instanceof Error ? error.message : 'Unable to explain the selection.',
+        selectedText,
       );
     }
   }
@@ -641,6 +650,22 @@ Additional guidelines:
       return;
     }
     this.notePopover?.showLoading();
+  }
+
+  private showExplanationError(error: string, selectedText: string): void {
+    const selection = this.storedSelection;
+    if (selection?.editorView && selection.to !== undefined) {
+      this.notePopover?.hide();
+      this.explanationPreview.showError(selection.editorView, selection.to, error, {
+        onDismiss: () => {
+          this.clear();
+          this.onUserSelectionChanged?.();
+        },
+        onRetry: () => void this.explainSelection(selectedText),
+      });
+      return;
+    }
+    this.notePopover?.showExplanationError(error, () => void this.explainSelection(selectedText));
   }
 
   private showStreamingExplanation(explanation: string): void {

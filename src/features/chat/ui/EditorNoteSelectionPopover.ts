@@ -57,6 +57,17 @@ export class EditorNoteSelectionPopover {
     });
   }
 
+  showExplanationError(error: string, onRetry: () => void): void {
+    if (!this.lastRect) return;
+    this.hideActionPopover();
+    this.explanationCard.showError({
+      anchor: this.lastRect,
+      message: error,
+      onDismiss: () => this.options.onDismiss(),
+      onRetry,
+    });
+  }
+
   showExplanationAt(explanation: string, rect: DOMRect): void {
     this.lastRect = rect;
     if (!this.popoverEl) {

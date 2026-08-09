@@ -3,6 +3,7 @@ import { Decoration, EditorView, WidgetType } from '@codemirror/view';
 
 export interface EditorSelectionExplanationPreviewOptions {
   onDismiss: () => void;
+  onRetry?: () => void;
 }
 
 const showExplanationPreview = StateEffect.define<ExplanationPreviewWidget>();
@@ -37,6 +38,7 @@ class ExplanationPreviewWidget extends WidgetType {
     readonly position: number,
     private readonly explanation: string | null,
     private readonly isStreaming: boolean,
+    private readonly isError: boolean,
     private readonly ownerDocument: Document,
     private readonly options: EditorSelectionExplanationPreviewOptions,
   ) {
@@ -46,7 +48,8 @@ class ExplanationPreviewWidget extends WidgetType {
   eq(other: ExplanationPreviewWidget): boolean {
     return this.position === other.position
       && this.explanation === other.explanation
-      && this.isStreaming === other.isStreaming;
+      && this.isStreaming === other.isStreaming
+      && this.isError === other.isError;
   }
 
   toDOM(): HTMLElement {
@@ -64,16 +67,29 @@ class ExplanationPreviewWidget extends WidgetType {
     });
     if (this.isStreaming) return previewEl;
     const actionsEl = previewEl.createDiv({ cls: 'claudian-inline-preview-actions' });
-    const copyButton = actionsEl.createEl('button', {
-      cls: 'claudian-inline-preview-action',
-      text: 'Sao chép',
-      attr: { type: 'button' },
-    });
-    copyButton.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      void navigator.clipboard?.writeText(explanation);
-    });
+    if (this.isError && this.options.onRetry) {
+      const retryButton = actionsEl.createEl('button', {
+        cls: 'claudian-inline-preview-action',
+        text: 'Thử lại',
+        attr: { type: 'button' },
+      });
+      retryButton.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.options.onRetry?.();
+      });
+    } else {
+      const copyButton = actionsEl.createEl('button', {
+        cls: 'claudian-inline-preview-action',
+        text: 'Sao chép',
+        attr: { type: 'button' },
+      });
+      copyButton.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        void navigator.clipboard?.writeText(explanation);
+      });
+    }
     const closeButton = actionsEl.createEl('button', {
       cls: 'claudian-inline-preview-action reject',
       text: 'Đóng',
@@ -120,7 +136,7 @@ export class EditorSelectionExplanationPreview {
     explanation: string,
     options: EditorSelectionExplanationPreviewOptions,
   ): void {
-    this.render(editorView, position, explanation, false, options);
+    this.render(editorView, position, explanation, false, false, options);
   }
 
   showLoading(
@@ -128,7 +144,7 @@ export class EditorSelectionExplanationPreview {
     position: number,
     options: EditorSelectionExplanationPreviewOptions,
   ): void {
-    this.render(editorView, position, null, false, options);
+    this.render(editorView, position, null, false, false, options);
   }
 
   showStreaming(
@@ -137,7 +153,16 @@ export class EditorSelectionExplanationPreview {
     explanation: string,
     options: EditorSelectionExplanationPreviewOptions,
   ): void {
-    this.render(editorView, position, explanation, true, options);
+    this.render(editorView, position, explanation, true, false, options);
+  }
+
+  showError(
+    editorView: EditorView,
+    position: number,
+    error: string,
+    options: EditorSelectionExplanationPreviewOptions,
+  ): void {
+    this.render(editorView, position, error, false, true, options);
   }
 
   private render(
@@ -145,6 +170,7 @@ export class EditorSelectionExplanationPreview {
     position: number,
     explanation: string | null,
     isStreaming: boolean,
+    isError: boolean,
     options: EditorSelectionExplanationPreviewOptions,
   ): void {
     if (!installedEditors.has(editorView)) {
@@ -157,6 +183,7 @@ export class EditorSelectionExplanationPreview {
         position,
         explanation,
         isStreaming,
+        isError,
         editorView.dom.ownerDocument,
         options,
       )),

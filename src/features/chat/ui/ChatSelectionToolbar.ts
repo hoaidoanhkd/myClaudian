@@ -1,9 +1,10 @@
 import { setIcon } from 'obsidian';
 
+import type { SelectionExplanationResult } from '../../../core/providers/types';
 import { SelectionActionCard } from '../../../shared/components/SelectionActionCard';
 
 export interface ChatSelectionToolbarOptions {
-  onExplain: (selectedText: string) => Promise<string>;
+  onExplain: (selectedText: string) => Promise<SelectionExplanationResult>;
   onRefine: (selectedText: string) => void;
 }
 
@@ -25,6 +26,12 @@ export class ChatSelectionToolbar {
       this.hide();
     }
   };
+  private readonly handleKeydown = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || !this.explanationCard.isVisible()) return;
+    event.preventDefault();
+    this.explanationGeneration += 1;
+    this.explanationCard.hide();
+  };
 
   constructor(
     private readonly containerEl: HTMLElement,
@@ -34,6 +41,7 @@ export class ChatSelectionToolbar {
     const ownerDoc = this.containerEl.ownerDocument || document;
     ownerDoc.addEventListener('selectionchange', this.handleSelectionChange);
     ownerDoc.addEventListener('mousedown', this.handleMouseDown);
+    ownerDoc.addEventListener('keydown', this.handleKeydown);
   }
 
   destroy(): void {
@@ -41,6 +49,7 @@ export class ChatSelectionToolbar {
     const ownerDoc = this.containerEl.ownerDocument || document;
     ownerDoc.removeEventListener('selectionchange', this.handleSelectionChange);
     ownerDoc.removeEventListener('mousedown', this.handleMouseDown);
+    ownerDoc.removeEventListener('keydown', this.handleKeydown);
     this.explanationGeneration += 1;
     this.explanationCard.destroy();
     this.removeToolbar();
@@ -124,8 +133,17 @@ export class ChatSelectionToolbar {
             this.explanationCard.hide();
           },
         });
-        void this.options.onExplain(text).then((explanation) => {
+        void this.options.onExplain(text).then((result) => {
           if (this.isDestroyed || generation !== this.explanationGeneration) return;
+          if (!result.success || !result.explanation) {
+            this.explanationCard.showError({
+              anchor: rect,
+              message: result.error ?? 'Unable to explain the selection.',
+              onRetry: () => explainBtn.click(),
+            });
+            return;
+          }
+          const explanation = result.explanation;
           this.explanationCard.showAnswer({
             anchor: rect,
             answer: explanation,

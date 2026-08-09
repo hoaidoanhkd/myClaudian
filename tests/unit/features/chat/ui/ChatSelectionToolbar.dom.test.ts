@@ -28,8 +28,8 @@ describe('ChatSelectionToolbar', () => {
   });
 
   it('shows the shared processing card immediately and ignores a result after dismissal', async () => {
-    let resolveExplanation: ((value: string) => void) | undefined;
-    const onExplain = jest.fn(() => new Promise<string>((resolve) => {
+    let resolveExplanation: ((value: { success: true; explanation: string }) => void) | undefined;
+    const onExplain = jest.fn(() => new Promise<{ success: true; explanation: string }>((resolve) => {
       resolveExplanation = resolve;
     }));
     const toolbar = new ChatSelectionToolbar(containerEl, {
@@ -55,7 +55,7 @@ describe('ChatSelectionToolbar', () => {
 
     const dismissButton = document.querySelector('[data-selection-action="cancel"]') as HTMLButtonElement;
     dismissButton.click();
-    resolveExplanation?.('This result should stay hidden.');
+    resolveExplanation?.({ success: true, explanation: 'This result should stay hidden.' });
     await Promise.resolve();
 
     expect(document.body.textContent).not.toContain('This result should stay hidden.');

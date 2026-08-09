@@ -477,12 +477,12 @@ export function buildTabRuntimeUI(
       try {
         await ProviderWorkspaceRegistry.ensureInitialized(plugin.providerHost, providerId, 'inline-edit');
         const service = ProviderRegistry.createSelectionExplanationService(plugin.providerHost, providerId);
-        const result = await service.explainSelection(text);
-        return result.success && result.explanation
-          ? result.explanation
-          : result.error ?? 'Unable to explain the selection.';
+        return service.explainSelection(text);
       } catch (error) {
-        return error instanceof Error ? error.message : 'Unable to explain the selection.';
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unable to explain the selection.',
+        };
       }
     },
     onRefine: (text) => {

@@ -45,6 +45,12 @@ describe('SelectionActionCard', () => {
     card.getElement()?.querySelector<HTMLButtonElement>('[data-selection-action="copy"]')?.click();
     expect(onCopy).toHaveBeenCalledTimes(1);
 
+    const onRetry = jest.fn();
+    card.showError({ anchor, message: 'Try again.', onRetry });
+    expect(card.getElement()?.textContent).toContain('Try again.');
+    card.getElement()?.querySelector<HTMLButtonElement>('[data-selection-action="retry"]')?.click();
+    expect(onRetry).toHaveBeenCalledTimes(1);
+
   });
 
   it('hides and destroys its element', () => {

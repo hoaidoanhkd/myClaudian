@@ -23,6 +23,13 @@ export interface SelectionActionCardAnswerOptions {
   onDismiss?: () => void;
 }
 
+export interface SelectionActionCardErrorOptions {
+  anchor: SelectionActionCardAnchor;
+  message: string;
+  onDismiss?: () => void;
+  onRetry: () => void;
+}
+
 /**
  * A provider-neutral, viewport-anchored card for actions and their result.
  * Consumers own selection tracking and async work; this class only renders state.
@@ -70,6 +77,16 @@ export class SelectionActionCard {
       this.addActionButton(actionsEl, 'copy', options.copyLabel ?? 'Copy', options.onCopy);
     }
     this.addDismissButton(actionsEl, options.dismissLabel ?? 'Close', options.onDismiss);
+  }
+
+  showError(options: SelectionActionCardErrorOptions): void {
+    const cardEl = this.prepareCard(options.anchor, 'answer');
+    if (!cardEl) return;
+    cardEl.appendChild(this.createElement('div', 'claudian-selection-action-card__content', options.message));
+    const actionsEl = this.createElement('div', 'claudian-selection-action-card__footer');
+    cardEl.appendChild(actionsEl);
+    this.addActionButton(actionsEl, 'retry', 'Thử lại', options.onRetry);
+    this.addDismissButton(actionsEl, 'Đóng', options.onDismiss);
   }
 
   hide(): void {

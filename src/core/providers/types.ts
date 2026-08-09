@@ -714,10 +714,16 @@ export interface InlineEditService {
   cancel(): void;
 }
 
+export interface SelectionExplanationResult {
+  success: boolean;
+  explanation?: string;
+  error?: string;
+}
+
 export interface SelectionExplanationService {
   explainSelection(
     selectedText: string,
     onProgress?: (accumulatedText: string) => void,
-  ): Promise<{ success: boolean; explanation?: string; error?: string }>;
+  ): Promise<SelectionExplanationResult>;
   cancel(): void;
 }

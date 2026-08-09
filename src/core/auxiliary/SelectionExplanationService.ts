@@ -1,4 +1,7 @@
-import type { SelectionExplanationService as SelectionExplanationServiceContract } from '../providers/types';
+import type {
+  SelectionExplanationResult,
+  SelectionExplanationService as SelectionExplanationServiceContract,
+} from '../providers/types';
 import type { AuxiliaryExecutionContext } from './AuxiliaryExecutionContext';
 import { AuxiliarySessionController } from './AuxiliarySessionController';
 
@@ -16,7 +19,7 @@ export class SelectionExplanationService implements SelectionExplanationServiceC
   async explainSelection(
     selectedText: string,
     onProgress?: (accumulatedText: string) => void,
-  ): Promise<{ success: boolean; explanation?: string; error?: string }> {
+  ): Promise<SelectionExplanationResult> {
     try {
       await this.controller.startRoot();
       const explanation = await this.controller.execute({
