@@ -165,21 +165,38 @@ export class AgyExecutionSession implements ProviderExecutionSession {
       type: 'assistant_message_started',
     });
 
+    let hasReceivedOutput = false;
+
     try {
       proc.start();
 
       proc.stdout.on('data', (chunk: Buffer | string) => {
         const text = chunk.toString();
-        eventQueue.push({
-          scope: makeScope(),
-          text,
-          type: 'text_delta',
-        });
+        if (text) {
+          hasReceivedOutput = true;
+          eventQueue.push({
+            scope: makeScope(),
+            text,
+            type: 'text_delta',
+          });
+        }
       });
 
       proc.onClose(() => {
         this.status = 'idle';
         this.emitSessionEvent();
+
+        if (!hasReceivedOutput) {
+          const stderrText = proc.getStderrSnapshot();
+          if (stderrText) {
+            eventQueue.push({
+              scope: makeScope(),
+              text: stderrText,
+              type: 'text_delta',
+            });
+          }
+        }
+
         eventQueue.push({
           reason: 'completed',
           scope: makeScope(),
