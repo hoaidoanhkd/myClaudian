@@ -18,6 +18,7 @@ describe('built-in ProviderModule catalog', () => {
       'grok',
       'opencode',
       'pi',
+      'agy',
     ]);
     for (const module of BUILT_IN_PROVIDER_MODULES) {
       expect(module.workspace.initialize).toEqual(expect.any(Function));
@@ -61,6 +62,7 @@ describe('built-in ProviderModule catalog', () => {
     });
 
     const defaultEnabled: Record<string, boolean> = {
+      agy: false,
       claude: true,
       codex: false,
       grok: false,
