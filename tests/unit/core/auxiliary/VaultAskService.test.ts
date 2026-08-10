@@ -6,7 +6,7 @@ import {
   waitFor,
 } from './AuxiliaryExecutionTestHarness';
 
-function createService() {
+function createService(resolveModel?: () => string | undefined) {
   const backend = new FakeAuxiliaryBackend();
   const lifecycleRegistry = new ProviderExecutionLifecycleRegistry();
   const service = new VaultAskService({
@@ -19,12 +19,13 @@ function createService() {
     },
     lifecycleRegistry,
     vaultWorkingDirectory: '/vault',
+    resolveModel,
   });
   return { backend, lifecycleRegistry, service };
 }
 
 describe('VaultAskService', () => {
-  it('asks the vault with a read-only ephemeral session and streams the answer', async () => {
+  it('asks the vault with a restricted ephemeral session and streams the answer', async () => {
     const { backend, service } = createService();
     const progress = jest.fn();
     const result = service.askVault('Which note mentions the roadmap?', progress);
@@ -37,7 +38,7 @@ describe('VaultAskService', () => {
     expect(backend.sessions[0].requests[0]).toMatchObject({
       configuration: { systemInstructions: { kind: 'explicit' } },
       input: [{ text: 'Which note mentions the roadmap?', type: 'text' }],
-      toolPolicy: { kind: 'read-only' },
+      toolPolicy: { kind: 'allow-list', names: ['Grep', 'Read'] },
     });
 
     backend.sessions[0].emitText('Roadmap.md mentions it.');
@@ -49,6 +50,20 @@ describe('VaultAskService', () => {
     });
     expect(progress).toHaveBeenCalledWith('Roadmap.md mentions it.');
     expect(backend.sessions[0].disposeCalls).toBe(1);
+  });
+
+  it('uses the resolved model when one is configured', async () => {
+    const { backend, service } = createService(() => 'claude-haiku-4-5');
+    const result = service.askVault('Anything about X?');
+    await waitFor(() => backend.sessions[0]?.requests.length === 1);
+
+    expect(backend.sessions[0].requests[0]).toMatchObject({
+      configuration: { model: 'claude-haiku-4-5' },
+    });
+
+    backend.sessions[0].emitText('Found it.');
+    backend.sessions[0].complete();
+    await expect(result).resolves.toEqual({ answer: 'Found it.', success: true });
   });
 
   it('returns a failure result when the provider returns no answer', async () => {
