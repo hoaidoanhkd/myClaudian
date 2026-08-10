@@ -40,13 +40,21 @@ function askQuestion(modal: VaultAskModal, question: string): void {
 
 describe('VaultAskModal', () => {
   describe('onOpen', () => {
-    it('renders a hidden answer area and an Ask button', () => {
+    it('renders a question label, a hint, a hidden answer area, and an Ask button', () => {
       const modal = openModal(createMockCallbacks());
       const contentEl = (modal as any).contentEl;
 
+      expect(findByClass(contentEl, 'claudian-vault-ask-label').textContent).toBe('Your question');
+      expect(findByClass(contentEl, 'claudian-vault-ask-hint')).not.toBeNull();
+
       const answerEl = findByClass(contentEl, 'claudian-vault-ask-answer');
-      expect(answerEl).not.toBeNull();
       expect(answerEl.hasClass('claudian-hidden')).toBe(true);
+
+      const loadingEl = findByClass(contentEl, 'claudian-vault-ask-loading');
+      expect(loadingEl.hasClass('claudian-hidden')).toBe(true);
+
+      const answerTextEl = findByClass(contentEl, 'claudian-vault-ask-answer-text');
+      expect(answerTextEl.hasClass('claudian-hidden')).toBe(true);
 
       const askBtn = findByClass(contentEl, 'claudian-vault-ask-ask-btn');
       expect(askBtn.textContent).toBe('Ask');
@@ -65,10 +73,39 @@ describe('VaultAskModal', () => {
       expect(callbacks.onAsk).not.toHaveBeenCalled();
     });
 
-    it('asks the vault and streams the answer into the answer area', async () => {
+    it('disables the Ask button and shows a busy label while a question is in flight', async () => {
+      let resolveAsk: (result: VaultAskResult) => void = () => undefined;
+      const onAsk = jest.fn(
+        () =>
+          new Promise<VaultAskResult>(resolve => {
+            resolveAsk = resolve;
+          }),
+      );
+      const callbacks = createMockCallbacks({ onAsk });
+      const modal = openModal(callbacks);
+      const contentEl = (modal as any).contentEl;
+      askQuestion(modal, 'What is the roadmap?');
+
+      const askBtn = findByClass(contentEl, 'claudian-vault-ask-ask-btn');
+      askBtn.click();
+      await Promise.resolve();
+
+      expect(askBtn.getAttribute('disabled')).toBe('true');
+      expect(askBtn.textContent).toBe('Asking...');
+
+      resolveAsk({ answer: 'Final answer', success: true });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(askBtn.getAttribute('disabled')).toBeNull();
+      expect(askBtn.textContent).toBe('Ask');
+    });
+
+    it('shows a loading indicator until the first token arrives, then streams the answer', async () => {
+      let progressCallback: (text: string) => void = () => undefined;
       let resolveAsk: (result: VaultAskResult) => void = () => undefined;
       const onAsk = jest.fn((_question: string, onProgress: (text: string) => void) => {
-        onProgress('Partial answer');
+        progressCallback = onProgress;
         return new Promise<VaultAskResult>(resolve => {
           resolveAsk = resolve;
         });
@@ -81,16 +118,25 @@ describe('VaultAskModal', () => {
       findByClass(contentEl, 'claudian-vault-ask-ask-btn').click();
       await Promise.resolve();
 
-      expect(onAsk).toHaveBeenCalledWith('What is the roadmap?', expect.any(Function));
       const answerEl = findByClass(contentEl, 'claudian-vault-ask-answer');
+      const loadingEl = findByClass(contentEl, 'claudian-vault-ask-loading');
+      const answerTextEl = findByClass(contentEl, 'claudian-vault-ask-answer-text');
+
       expect(answerEl.hasClass('claudian-hidden')).toBe(false);
-      expect(answerEl.textContent).toBe('Partial answer');
+      expect(loadingEl.hasClass('claudian-hidden')).toBe(false);
+      expect(answerTextEl.hasClass('claudian-hidden')).toBe(true);
+
+      progressCallback('Partial answer');
+
+      expect(loadingEl.hasClass('claudian-hidden')).toBe(true);
+      expect(answerTextEl.hasClass('claudian-hidden')).toBe(false);
+      expect(answerTextEl.textContent).toBe('Partial answer');
 
       resolveAsk({ answer: 'Final answer', success: true });
       await Promise.resolve();
       await Promise.resolve();
 
-      expect(answerEl.textContent).toBe('Final answer');
+      expect(answerTextEl.textContent).toBe('Final answer');
     });
 
     it('shows the error message when the query fails', async () => {
@@ -105,8 +151,9 @@ describe('VaultAskModal', () => {
       await Promise.resolve();
       await Promise.resolve();
 
-      const answerEl = findByClass(contentEl, 'claudian-vault-ask-answer');
-      expect(answerEl.textContent).toBe('No answer was returned.');
+      const answerTextEl = findByClass(contentEl, 'claudian-vault-ask-answer-text');
+      expect(answerTextEl.hasClass('claudian-hidden')).toBe(false);
+      expect(answerTextEl.textContent).toBe('No answer was returned.');
     });
   });
 

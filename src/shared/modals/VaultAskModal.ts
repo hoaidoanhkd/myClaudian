@@ -27,6 +27,8 @@ export interface VaultAskModalCallbacks {
 export class VaultAskModal extends Modal {
   private questionInput: TextAreaComponent | null = null;
   private answerEl: HTMLElement | null = null;
+  private loadingEl: HTMLElement | null = null;
+  private answerTextEl: HTMLElement | null = null;
   private askBtnEl: HTMLButtonElement | null = null;
   private isAsking = false;
 
@@ -40,6 +42,8 @@ export class VaultAskModal extends Modal {
     this.setTitle('Ask across vault');
 
     const inputSection = contentEl.createDiv({ cls: 'claudian-vault-ask-section' });
+    inputSection.createDiv({ cls: 'claudian-vault-ask-label', text: 'Your question' });
+
     this.questionInput = new TextAreaComponent(inputSection);
     this.questionInput.inputEl.addClass('claudian-vault-ask-input');
     this.questionInput.inputEl.rows = 3;
@@ -52,8 +56,21 @@ export class VaultAskModal extends Modal {
       }
     });
 
+    inputSection.createDiv({
+      cls: 'claudian-vault-ask-hint',
+      text: 'Enter to ask · Shift+Enter for a new line',
+    });
+
     this.answerEl = contentEl.createDiv({ cls: 'claudian-vault-ask-answer' });
     this.answerEl.addClass('claudian-hidden');
+
+    this.loadingEl = this.answerEl.createDiv({ cls: 'claudian-vault-ask-loading' });
+    this.loadingEl.createDiv({ cls: 'claudian-vault-ask-spinner' });
+    this.loadingEl.createSpan({ text: 'Searching your vault...' });
+    this.loadingEl.addClass('claudian-hidden');
+
+    this.answerTextEl = this.answerEl.createDiv({ cls: 'claudian-vault-ask-answer-text' });
+    this.answerTextEl.addClass('claudian-hidden');
 
     const buttonsEl = contentEl.createDiv({ cls: 'claudian-vault-ask-buttons' });
     this.askBtnEl = buttonsEl.createEl('button', {
@@ -72,25 +89,35 @@ export class VaultAskModal extends Modal {
 
     this.isAsking = true;
     this.askBtnEl?.setAttribute('disabled', 'true');
+    this.askBtnEl?.setText('Asking...');
     this.answerEl?.removeClass('claudian-hidden');
-    this.answerEl?.setText('');
+    this.loadingEl?.removeClass('claudian-hidden');
+    this.answerTextEl?.addClass('claudian-hidden');
+    this.answerTextEl?.setText('');
+
+    let hasStreamed = false;
+    const showAnswer = (text: string) => {
+      if (!hasStreamed) {
+        hasStreamed = true;
+        this.loadingEl?.addClass('claudian-hidden');
+        this.answerTextEl?.removeClass('claudian-hidden');
+      }
+      this.answerTextEl?.setText(text);
+    };
 
     try {
-      const result = await this.callbacks.onAsk(question, accumulatedText => {
-        this.answerEl?.setText(accumulatedText);
-      });
-      this.answerEl?.setText(
+      const result = await this.callbacks.onAsk(question, showAnswer);
+      showAnswer(
         result.success && result.answer
           ? result.answer
           : result.error ?? 'Unable to answer the question.',
       );
     } catch (error) {
-      this.answerEl?.setText(
-        error instanceof Error ? error.message : 'Unable to answer the question.',
-      );
+      showAnswer(error instanceof Error ? error.message : 'Unable to answer the question.');
     } finally {
       this.isAsking = false;
       this.askBtnEl?.removeAttribute('disabled');
+      this.askBtnEl?.setText('Ask');
     }
   }
 
