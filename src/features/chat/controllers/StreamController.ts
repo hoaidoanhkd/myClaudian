@@ -45,6 +45,7 @@ import { formatDurationMmSs } from '../../../utils/date';
 import { extractDiffData } from '../../../utils/diff';
 import { hasStreamingMathDelimiters } from '../../../utils/markdownMath';
 import { getVaultPath, normalizePathForVault } from '../../../utils/path';
+import { StreamingRenderCoordinator } from '../../../utils/StreamingRenderCoordinator';
 import type { FeatureHost } from '../../FeatureHost';
 import { FLAVOR_TEXTS } from '../constants';
 import type { MessageRenderer, RenderContentOptions } from '../rendering/MessageRenderer';
@@ -78,7 +79,6 @@ import type { SubagentManager } from '../services/SubagentManager';
 import type { AsyncSubagentCompletion } from '../services/SubagentManager';
 import type { ChatState } from '../state/ChatState';
 import type { FileContextManager } from '../ui/FileContext';
-import { StreamingRenderCoordinator } from './StreamingRenderCoordinator';
 
 export interface StreamControllerDeps {
   plugin: FeatureHost;

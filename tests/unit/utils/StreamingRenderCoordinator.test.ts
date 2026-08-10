@@ -1,4 +1,4 @@
-import { StreamingRenderCoordinator } from '@/features/chat/controllers/StreamingRenderCoordinator';
+import { StreamingRenderCoordinator } from '@/utils/StreamingRenderCoordinator';
 
 interface Deferred {
   promise: Promise<void>;

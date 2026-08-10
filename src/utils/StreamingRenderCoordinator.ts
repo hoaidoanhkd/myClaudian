@@ -3,7 +3,7 @@ import {
   scheduleAnimationFrame,
   type ScheduledAnimationFrame,
   scheduleDelayedFrame,
-} from '../../../utils/animationFrame';
+} from './animationFrame';
 
 export interface StreamingRenderCoordinatorOptions<TSnapshot> {
   render: (snapshot: TSnapshot) => Promise<void>;
