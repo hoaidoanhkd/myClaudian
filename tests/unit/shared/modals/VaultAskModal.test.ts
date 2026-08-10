@@ -1,38 +1,10 @@
 import { createMockEl } from '@test/helpers/MockElement';
-import { MarkdownRenderer } from 'obsidian';
 
 import {
   VaultAskModal,
   type VaultAskModalCallbacks,
   type VaultAskResult,
 } from '@/shared/modals/VaultAskModal';
-
-const mockApp = {} as any;
-const mockComponent = {} as any;
-
-beforeEach(() => {
-  jest.useFakeTimers();
-  jest.clearAllMocks();
-  // Simulate real Obsidian markdown rendering closely enough for assertions:
-  // write the rendered text into the target container.
-  (MarkdownRenderer.render as jest.Mock).mockImplementation(
-    async (_app: unknown, markdown: string, container: { setText: (text: string) => void }) => {
-      container.setText(markdown);
-    },
-  );
-});
-
-afterEach(() => {
-  jest.useRealTimers();
-});
-
-/** Drains scheduled render-coordinator frames and their async follow-up. */
-async function settle(): Promise<void> {
-  jest.advanceTimersByTime(200);
-  for (let i = 0; i < 6; i += 1) {
-    await Promise.resolve();
-  }
-}
 
 function createMockCallbacks(
   overrides: Partial<VaultAskModalCallbacks> = {}
@@ -45,7 +17,7 @@ function createMockCallbacks(
 }
 
 function openModal(callbacks: VaultAskModalCallbacks): VaultAskModal {
-  const modal = new VaultAskModal(mockApp, mockComponent, callbacks);
+  const modal = new VaultAskModal({} as any, callbacks);
   (modal as any).setTitle = jest.fn();
   (modal as any).contentEl = createMockEl();
   (modal as any).close = jest.fn();
@@ -96,7 +68,7 @@ describe('VaultAskModal', () => {
       const contentEl = (modal as any).contentEl;
 
       findByClass(contentEl, 'claudian-vault-ask-ask-btn').click();
-      await settle();
+      await Promise.resolve();
 
       expect(callbacks.onAsk).not.toHaveBeenCalled();
     });
@@ -116,13 +88,14 @@ describe('VaultAskModal', () => {
 
       const askBtn = findByClass(contentEl, 'claudian-vault-ask-ask-btn');
       askBtn.click();
-      await settle();
+      await Promise.resolve();
 
       expect(askBtn.getAttribute('disabled')).toBe('true');
       expect(askBtn.textContent).toBe('Asking...');
 
       resolveAsk({ answer: 'Final answer', success: true });
-      await settle();
+      await Promise.resolve();
+      await Promise.resolve();
 
       expect(askBtn.getAttribute('disabled')).toBeNull();
       expect(askBtn.textContent).toBe('Ask');
@@ -143,7 +116,7 @@ describe('VaultAskModal', () => {
       askQuestion(modal, 'What is the roadmap?');
 
       findByClass(contentEl, 'claudian-vault-ask-ask-btn').click();
-      await settle();
+      await Promise.resolve();
 
       const answerEl = findByClass(contentEl, 'claudian-vault-ask-answer');
       const loadingEl = findByClass(contentEl, 'claudian-vault-ask-loading');
@@ -153,38 +126,17 @@ describe('VaultAskModal', () => {
       expect(loadingEl.hasClass('claudian-hidden')).toBe(false);
       expect(answerTextEl.hasClass('claudian-hidden')).toBe(true);
 
-      // Streaming deltas are throttled through the render coordinator, so the
-      // first paint only happens once a frame is allowed to run.
-      progressCallback('Partial');
       progressCallback('Partial answer');
-      await settle();
 
       expect(loadingEl.hasClass('claudian-hidden')).toBe(true);
       expect(answerTextEl.hasClass('claudian-hidden')).toBe(false);
       expect(answerTextEl.textContent).toBe('Partial answer');
-      // Coalesced: only the latest snapshot in the throttle window is painted.
-      expect((MarkdownRenderer.render as jest.Mock).mock.calls.map(call => call[1])).not.toContain('Partial');
 
       resolveAsk({ answer: 'Final answer', success: true });
-      await settle();
+      await Promise.resolve();
+      await Promise.resolve();
 
       expect(answerTextEl.textContent).toBe('Final answer');
-    });
-
-    it('falls back to plain text when markdown rendering fails', async () => {
-      (MarkdownRenderer.render as jest.Mock).mockRejectedValueOnce(new Error('render failed'));
-      const callbacks = createMockCallbacks({
-        onAsk: jest.fn().mockResolvedValue({ answer: '**Bold** answer', success: true }),
-      });
-      const modal = openModal(callbacks);
-      const contentEl = (modal as any).contentEl;
-      askQuestion(modal, 'What is the roadmap?');
-
-      findByClass(contentEl, 'claudian-vault-ask-ask-btn').click();
-      await settle();
-
-      const answerTextEl = findByClass(contentEl, 'claudian-vault-ask-answer-text');
-      expect(answerTextEl.textContent).toBe('**Bold** answer');
     });
 
     it('shows the error message when the query fails', async () => {
@@ -196,7 +148,8 @@ describe('VaultAskModal', () => {
       askQuestion(modal, 'What is the roadmap?');
 
       findByClass(contentEl, 'claudian-vault-ask-ask-btn').click();
-      await settle();
+      await Promise.resolve();
+      await Promise.resolve();
 
       const answerTextEl = findByClass(contentEl, 'claudian-vault-ask-answer-text');
       expect(answerTextEl.hasClass('claudian-hidden')).toBe(false);
@@ -212,7 +165,7 @@ describe('VaultAskModal', () => {
       askQuestion(modal, 'What is the roadmap?');
 
       findByClass((modal as any).contentEl, 'claudian-vault-ask-ask-btn').click();
-      await settle();
+      await Promise.resolve();
 
       VaultAskModal.prototype.onClose.call(modal);
 

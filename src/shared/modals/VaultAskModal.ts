@@ -7,14 +7,8 @@
  * running the actual query.
  */
 
-import type { App, Component } from 'obsidian';
-import { MarkdownRenderer, Modal, TextAreaComponent } from 'obsidian';
-
-import { StreamingRenderCoordinator } from '../../utils/StreamingRenderCoordinator';
-
-// Matches the chat sidebar's own streaming cadence (see StreamController),
-// so the two surfaces feel consistent.
-const VAULT_ASK_RENDER_MIN_INTERVAL_MS = 150;
+import type { App } from 'obsidian';
+import { Modal, TextAreaComponent } from 'obsidian';
 
 export interface VaultAskResult {
   success: boolean;
@@ -37,20 +31,9 @@ export class VaultAskModal extends Modal {
   private answerTextEl: HTMLElement | null = null;
   private askBtnEl: HTMLButtonElement | null = null;
   private isAsking = false;
-  private hasPaintedAnswer = false;
-  private readonly renderCoordinator: StreamingRenderCoordinator<string>;
 
-  constructor(
-    app: App,
-    private readonly component: Component,
-    private readonly callbacks: VaultAskModalCallbacks,
-  ) {
+  constructor(app: App, private readonly callbacks: VaultAskModalCallbacks) {
     super(app);
-    this.renderCoordinator = new StreamingRenderCoordinator<string>({
-      getOwnerWindow: () => (typeof window === 'undefined' ? null : window),
-      minIntervalMs: VAULT_ASK_RENDER_MIN_INTERVAL_MS,
-      render: markdown => this.paintAnswer(markdown),
-    });
   }
 
   onOpen() {
@@ -105,58 +88,40 @@ export class VaultAskModal extends Modal {
     if (!question || this.isAsking) return;
 
     this.isAsking = true;
-    this.hasPaintedAnswer = false;
     this.askBtnEl?.setAttribute('disabled', 'true');
     this.askBtnEl?.setText('Asking...');
     this.answerEl?.removeClass('claudian-hidden');
     this.loadingEl?.removeClass('claudian-hidden');
     this.answerTextEl?.addClass('claudian-hidden');
-    this.answerTextEl?.empty();
+    this.answerTextEl?.setText('');
+
+    let hasStreamed = false;
+    const showAnswer = (text: string) => {
+      if (!hasStreamed) {
+        hasStreamed = true;
+        this.loadingEl?.addClass('claudian-hidden');
+        this.answerTextEl?.removeClass('claudian-hidden');
+      }
+      this.answerTextEl?.setText(text);
+    };
 
     try {
-      const result = await this.callbacks.onAsk(question, accumulatedText => {
-        this.renderCoordinator.request(accumulatedText);
-      });
-      const finalText = result.success && result.answer
-        ? result.answer
-        : result.error ?? 'Unable to answer the question.';
-      this.renderCoordinator.request(finalText);
-      await this.renderCoordinator.flush();
+      const result = await this.callbacks.onAsk(question, showAnswer);
+      showAnswer(
+        result.success && result.answer
+          ? result.answer
+          : result.error ?? 'Unable to answer the question.',
+      );
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to answer the question.';
-      this.renderCoordinator.request(message);
-      await this.renderCoordinator.flush();
+      showAnswer(error instanceof Error ? error.message : 'Unable to answer the question.');
     } finally {
-      this.renderCoordinator.cancel();
       this.isAsking = false;
       this.askBtnEl?.removeAttribute('disabled');
       this.askBtnEl?.setText('Ask');
     }
   }
 
-  // Called by the render coordinator on its own throttled cadence: at most
-  // once per animation frame, coalescing any deltas that arrived in between.
-  private async paintAnswer(markdown: string): Promise<void> {
-    const container = this.answerTextEl;
-    if (!container) return;
-
-    if (!this.hasPaintedAnswer) {
-      this.hasPaintedAnswer = true;
-      this.loadingEl?.addClass('claudian-hidden');
-      container.removeClass('claudian-hidden');
-    }
-
-    container.empty();
-    try {
-      await MarkdownRenderer.render(this.app, markdown, container, '', this.component);
-    } catch {
-      container.empty();
-      container.setText(markdown);
-    }
-  }
-
   onClose() {
-    this.renderCoordinator.dispose();
     if (this.isAsking) {
       this.callbacks.onCancel();
     }
