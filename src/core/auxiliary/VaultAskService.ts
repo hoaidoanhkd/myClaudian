@@ -27,7 +27,7 @@ export class VaultAskService implements VaultAskServiceContract {
     try {
       await this.controller.startRoot();
       const answer = await this.controller.execute({
-        model: this.options.resolveModel?.(),
+        model: this.resolveModel(),
         prompt: question,
         systemPrompt: VAULT_ASK_SYSTEM_PROMPT,
         onProgress,
@@ -47,6 +47,17 @@ export class VaultAskService implements VaultAskServiceContract {
 
   cancel(): void {
     this.controller.cancel();
+  }
+
+  private resolveModel(): string | undefined {
+    const configuredModel = this.options.resolveModel?.();
+    if (configuredModel) return configuredModel;
+
+    // Vault Ask is an extraction/search task, so keep it on Claude's fast model
+    // instead of inheriting the potentially expensive model selected for chat.
+    return this.options.backend.providerId === 'claude'
+      ? 'claude-haiku-4-5'
+      : undefined;
   }
 }
 
