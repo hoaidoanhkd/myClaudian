@@ -14,6 +14,7 @@ export type ProviderExecutionOwnerKind =
   | 'instruction'
   | 'inline-edit'
   | 'selection-explanation'
+  | 'vault-ask'
   | 'warmup';
 
 export type ProviderExecutionInvalidationReason =

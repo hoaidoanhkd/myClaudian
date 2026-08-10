@@ -3,6 +3,7 @@ import { InlineEditService as SharedInlineEditService } from '../auxiliary/Inlin
 import { InstructionRefineService as SharedInstructionRefineService } from '../auxiliary/InstructionRefineService';
 import { SelectionExplanationService as SharedSelectionExplanationService } from '../auxiliary/SelectionExplanationService';
 import { TitleGenerationService as SharedTitleGenerationService } from '../auxiliary/TitleGenerationService';
+import { VaultAskService as SharedVaultAskService } from '../auxiliary/VaultAskService';
 import type {
   ProviderExecutionBackend,
   ProviderInteractionPort,
@@ -29,6 +30,7 @@ import {
   type SelectionExplanationService,
   type TitleGenerationCallback,
   type TitleGenerationService,
+  type VaultAskService,
 } from './types';
 
 /**
@@ -119,6 +121,15 @@ export class ProviderRegistry {
     providerId: ProviderId = DEFAULT_CHAT_PROVIDER_ID,
   ): SelectionExplanationService {
     return new SharedSelectionExplanationService(
+      this.createAuxiliaryExecutionContext(plugin, providerId),
+    );
+  }
+
+  static createVaultAskService(
+    plugin: ProviderHost,
+    providerId: ProviderId = DEFAULT_CHAT_PROVIDER_ID,
+  ): VaultAskService {
+    return new SharedVaultAskService(
       this.createAuxiliaryExecutionContext(plugin, providerId),
     );
   }

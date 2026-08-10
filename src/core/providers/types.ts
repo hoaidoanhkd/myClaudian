@@ -727,3 +727,17 @@ export interface SelectionExplanationService {
   ): Promise<SelectionExplanationResult>;
   cancel(): void;
 }
+
+export interface VaultAskResult {
+  success: boolean;
+  answer?: string;
+  error?: string;
+}
+
+export interface VaultAskService {
+  askVault(
+    question: string,
+    onProgress?: (accumulatedText: string) => void,
+  ): Promise<VaultAskResult>;
+  cancel(): void;
+}

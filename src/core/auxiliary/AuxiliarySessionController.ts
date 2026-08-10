@@ -15,13 +15,14 @@ export interface AuxiliaryRequest {
   readonly systemPrompt: string;
 }
 
-type AuxiliaryExecutionOwner = 'title' | 'instruction' | 'inline-edit' | 'selection-explanation';
+type AuxiliaryExecutionOwner = 'title' | 'instruction' | 'inline-edit' | 'selection-explanation' | 'vault-ask';
 
 const NATIVE_PERSISTENCE_BY_OWNER = {
   title: 'disabled-if-supported',
   instruction: 'provider-default',
   'inline-edit': 'provider-default',
   'selection-explanation': 'disabled-if-supported',
+  'vault-ask': 'disabled-if-supported',
 } as const satisfies Record<
   AuxiliaryExecutionOwner,
   ProviderNativePersistence

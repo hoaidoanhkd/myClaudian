@@ -71,6 +71,7 @@ import { type InlineEditContext, InlineEditModal } from './features/inline-edit/
 import { ClaudianSettingTab } from './features/settings/ClaudianSettings';
 import { setLocale } from './i18n/i18n';
 import type { Locale } from './i18n/types';
+import { VaultAskModal } from './shared/modals/VaultAskModal';
 import { buildCursorContext } from './utils/editor';
 import { revealWorkspaceLeaf } from './utils/obsidianCompat';
 import { getVaultPath } from './utils/path';
@@ -261,6 +262,24 @@ export default class ClaudianPlugin extends Plugin {
           if (result.decision === 'accept' && result.editedText !== undefined) {
             new Notice(editContext.mode === 'cursor' ? 'Inserted' : 'Edit applied');
           }
+        },
+      });
+
+      this.addCommand({
+        id: 'ask-vault',
+        name: 'Ask across vault',
+        callback: () => {
+          const providerId = ProviderRegistry.resolveSettingsProviderId(this.settings);
+          let service: ReturnType<typeof ProviderRegistry.createVaultAskService> | null = null;
+          const modal = new VaultAskModal(this.app, {
+            onAsk: async (question, onProgress) => {
+              await ProviderWorkspaceRegistry.ensureInitialized(this.providerHost, providerId, 'vault-ask');
+              service = ProviderRegistry.createVaultAskService(this.providerHost, providerId);
+              return service.askVault(question, onProgress);
+            },
+            onCancel: () => service?.cancel(),
+          });
+          modal.open();
         },
       });
 
