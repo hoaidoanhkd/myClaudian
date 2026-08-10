@@ -7,8 +7,8 @@
  * running the actual query.
  */
 
-import type { App } from 'obsidian';
-import { Modal, TextAreaComponent } from 'obsidian';
+import type { App, Component } from 'obsidian';
+import { MarkdownRenderer, Modal, TextAreaComponent } from 'obsidian';
 
 export interface VaultAskResult {
   success: boolean;
@@ -32,7 +32,11 @@ export class VaultAskModal extends Modal {
   private askBtnEl: HTMLButtonElement | null = null;
   private isAsking = false;
 
-  constructor(app: App, private readonly callbacks: VaultAskModalCallbacks) {
+  constructor(
+    app: App,
+    private readonly component: Component,
+    private readonly callbacks: VaultAskModalCallbacks,
+  ) {
     super(app);
   }
 
@@ -96,7 +100,9 @@ export class VaultAskModal extends Modal {
     this.answerTextEl?.setText('');
 
     let hasStreamed = false;
-    const showAnswer = (text: string) => {
+    // While streaming, show plain accumulated text: re-rendering markdown on
+    // every delta is wasteful and can flash broken HTML on a mid-token cut.
+    const showStreamingText = (text: string) => {
       if (!hasStreamed) {
         hasStreamed = true;
         this.loadingEl?.addClass('claudian-hidden');
@@ -106,18 +112,34 @@ export class VaultAskModal extends Modal {
     };
 
     try {
-      const result = await this.callbacks.onAsk(question, showAnswer);
-      showAnswer(
-        result.success && result.answer
-          ? result.answer
-          : result.error ?? 'Unable to answer the question.',
-      );
+      const result = await this.callbacks.onAsk(question, showStreamingText);
+      if (result.success && result.answer) {
+        await this.renderFinalAnswer(result.answer);
+      } else {
+        showStreamingText(result.error ?? 'Unable to answer the question.');
+      }
     } catch (error) {
-      showAnswer(error instanceof Error ? error.message : 'Unable to answer the question.');
+      showStreamingText(error instanceof Error ? error.message : 'Unable to answer the question.');
     } finally {
       this.isAsking = false;
       this.askBtnEl?.removeAttribute('disabled');
       this.askBtnEl?.setText('Ask');
+    }
+  }
+
+  private async renderFinalAnswer(markdown: string): Promise<void> {
+    const container = this.answerTextEl;
+    if (!container) return;
+
+    this.loadingEl?.addClass('claudian-hidden');
+    container.removeClass('claudian-hidden');
+    container.empty();
+
+    try {
+      await MarkdownRenderer.render(this.app, markdown, container, '', this.component);
+    } catch {
+      container.empty();
+      container.setText(markdown);
     }
   }
 

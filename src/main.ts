@@ -271,7 +271,7 @@ export default class ClaudianPlugin extends Plugin {
         callback: () => {
           const providerId = ProviderRegistry.resolveSettingsProviderId(this.settings);
           let service: ReturnType<typeof ProviderRegistry.createVaultAskService> | null = null;
-          const modal = new VaultAskModal(this.app, {
+          const modal = new VaultAskModal(this.app, this, {
             onAsk: async (question, onProgress) => {
               await ProviderWorkspaceRegistry.ensureInitialized(this.providerHost, providerId, 'vault-ask');
               service = ProviderRegistry.createVaultAskService(this.providerHost, providerId);

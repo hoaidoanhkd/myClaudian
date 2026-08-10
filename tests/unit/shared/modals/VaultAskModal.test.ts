@@ -1,10 +1,22 @@
 import { createMockEl } from '@test/helpers/MockElement';
+import { MarkdownRenderer } from 'obsidian';
 
 import {
   VaultAskModal,
   type VaultAskModalCallbacks,
   type VaultAskResult,
 } from '@/shared/modals/VaultAskModal';
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  // Simulate real Obsidian markdown rendering closely enough for assertions:
+  // write the rendered text into the target container.
+  (MarkdownRenderer.render as jest.Mock).mockImplementation(
+    async (_app: unknown, markdown: string, container: { setText: (text: string) => void }) => {
+      container.setText(markdown);
+    },
+  );
+});
 
 function createMockCallbacks(
   overrides: Partial<VaultAskModalCallbacks> = {}
@@ -16,8 +28,11 @@ function createMockCallbacks(
   };
 }
 
+const mockApp = {} as any;
+const mockComponent = {} as any;
+
 function openModal(callbacks: VaultAskModalCallbacks): VaultAskModal {
-  const modal = new VaultAskModal({} as any, callbacks);
+  const modal = new VaultAskModal(mockApp, mockComponent, callbacks);
   (modal as any).setTitle = jest.fn();
   (modal as any).contentEl = createMockEl();
   (modal as any).close = jest.fn();
@@ -96,6 +111,7 @@ describe('VaultAskModal', () => {
       resolveAsk({ answer: 'Final answer', success: true });
       await Promise.resolve();
       await Promise.resolve();
+      await Promise.resolve();
 
       expect(askBtn.getAttribute('disabled')).toBeNull();
       expect(askBtn.textContent).toBe('Ask');
@@ -137,6 +153,30 @@ describe('VaultAskModal', () => {
       await Promise.resolve();
 
       expect(answerTextEl.textContent).toBe('Final answer');
+      expect(MarkdownRenderer.render).toHaveBeenCalledWith(
+        mockApp,
+        'Final answer',
+        answerTextEl,
+        '',
+        mockComponent,
+      );
+    });
+
+    it('falls back to plain text when markdown rendering fails', async () => {
+      (MarkdownRenderer.render as jest.Mock).mockRejectedValueOnce(new Error('render failed'));
+      const callbacks = createMockCallbacks({
+        onAsk: jest.fn().mockResolvedValue({ answer: '**Bold** answer', success: true }),
+      });
+      const modal = openModal(callbacks);
+      const contentEl = (modal as any).contentEl;
+      askQuestion(modal, 'What is the roadmap?');
+
+      findByClass(contentEl, 'claudian-vault-ask-ask-btn').click();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const answerTextEl = findByClass(contentEl, 'claudian-vault-ask-answer-text');
+      expect(answerTextEl.textContent).toBe('**Bold** answer');
     });
 
     it('shows the error message when the query fails', async () => {
@@ -154,6 +194,7 @@ describe('VaultAskModal', () => {
       const answerTextEl = findByClass(contentEl, 'claudian-vault-ask-answer-text');
       expect(answerTextEl.hasClass('claudian-hidden')).toBe(false);
       expect(answerTextEl.textContent).toBe('No answer was returned.');
+      expect(MarkdownRenderer.render).not.toHaveBeenCalled();
     });
   });
 
