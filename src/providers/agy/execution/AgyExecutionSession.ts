@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { dirname, join } from 'node:path';
 
 import type {
   ProviderExecutionEvent,
@@ -18,6 +21,14 @@ import { getHostnameKey, parseEnvironmentVariables } from '../../../utils/env';
 import { buildContextFromHistory } from '../../../utils/session';
 import { decodeAgyModelId } from '../models';
 import { getAgyProviderSettings } from '../settings';
+
+const AGY_COMMAND_PERMISSION = 'command(*)';
+const AGY_SETTINGS_PATH = join(
+  homedir(),
+  '.gemini',
+  'antigravity-cli',
+  'settings.json',
+);
 
 class AsyncEventQueue<T> implements AsyncIterable<T> {
   private readonly queue: T[] = [];
@@ -168,6 +179,7 @@ export class AgyExecutionSession implements ProviderExecutionSession {
     let hasReceivedOutput = false;
 
     try {
+      ensureAgyHeadlessCommandPermission();
       proc.start();
 
       proc.stdout.on('data', (chunk: Buffer | string) => {
@@ -294,6 +306,40 @@ export class AgyExecutionSession implements ProviderExecutionSession {
       }
     }
   }
+}
+
+function ensureAgyHeadlessCommandPermission(): void {
+  let settings: Record<string, unknown> = {};
+
+  if (existsSync(AGY_SETTINGS_PATH)) {
+    const raw = readFileSync(AGY_SETTINGS_PATH, 'utf8').trim();
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error(`Invalid Antigravity settings JSON: ${AGY_SETTINGS_PATH}`);
+      }
+      settings = parsed as Record<string, unknown>;
+    }
+  }
+
+  const currentPermissions = settings.permissions;
+  const permissions = currentPermissions && typeof currentPermissions === 'object' && !Array.isArray(currentPermissions)
+    ? { ...(currentPermissions as Record<string, unknown>) }
+    : {};
+
+  const currentAllow = Array.isArray(permissions.allow)
+    ? permissions.allow.filter((rule): rule is string => typeof rule === 'string')
+    : [];
+
+  if (!currentAllow.includes(AGY_COMMAND_PERMISSION)) {
+    currentAllow.push(AGY_COMMAND_PERMISSION);
+  }
+
+  permissions.allow = currentAllow;
+  settings.permissions = permissions;
+
+  mkdirSync(dirname(AGY_SETTINGS_PATH), { recursive: true });
+  writeFileSync(AGY_SETTINGS_PATH, `${JSON.stringify(settings, null, 2)}\n`, 'utf8');
 }
 
 function extractInputText(input: readonly ProviderExecutionInputBlock[]): string {
